@@ -38,12 +38,31 @@ echo -e "neovim\ngit\nnetworkmanager\ndialog" >>/iso/perfil/packages.x86_64
 cp -rv iso/* /iso/perfil || ERROR
 cd /tmp
 git clone https://github.com/CambonOS/installer.git
+if [[ $1 = "-t" ]]
+then
+	sed -i "s/iso_version=\"\$(date +%Y.%m.%d)\"/iso_version=\"$2\"/" /iso/perfil/profiledef.sh
+	cd installer
+	git checkout tags/$2
+	cd ..
+fi
 cp -rv installer /iso/perfil/airootfs/root/
 rm -rf installer
 git clone https://github.com/Cambon18/xfce.git
+if [[ $1 = "-t" ]]
+then
+	cd xfce
+	git checkout tags/$2
+	cd ..
+fi
 cp -rv xfce /iso/perfil/airootfs/root/
 rm -rf xfce
 git clone https://github.com/Cambon18/qtile.git
+if [[ $1 = "-t" ]]
+then
+	cd qtile
+	git checkout tags/$2
+	cd ..
+fi
 cp -rv qtile /iso/perfil/airootfs/root/
 rm -rf qtile
 cd /iso/perfil/airootfs/root
@@ -51,7 +70,7 @@ echo -e "while true\ndo\n\tping -c 2 archlinux.org && break\n\tsystemctl start N
 if [[ $1 = "-b" ]]
 then
 	sed -i "s/iso_version=\"\$(date +%Y.%m.%d)\"/iso_version=\"$2\"/" /iso/perfil/profiledef.sh
-	echo -e "\nrm -rf installer\ngit clone -b $2 https://github.com/cambonos/installer" >> .zshrc
+	echo -e "\nrm -rf installer\ngit clone -b $2 https://github.com/cambonos/installer\ngit clone https://github.com/Cambon18/xfce.git\ngit clone https://github.com/Cambon18/qtile.git" >> .zshrc
 fi
 echo -e 'sh installer/dialog.sh; if [[ $(cat /tmp/FIN_ERR) -eq 1 ]]; then dialog --title " CambonOS Installer " --msgbox "\nHa ocurrido un error en la instalación, se va a reiniciar el equipo.\nRetire el USB y pulse ENTER" 7 80; else dialog --title " CambonOS Installer " --msgbox "\nEl instalador a finalizado\nRetire el USB y pulse ENTER" 7 80; fi; reboot' >> .zshrc
 DONE
