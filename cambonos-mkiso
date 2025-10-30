@@ -70,9 +70,9 @@ echo -e "while true\ndo\n\tping -c 2 archlinux.org && break\n\tsystemctl start N
 if [[ $1 = "-b" ]]
 then
 	sed -i "s/iso_version=\"\$(date +%Y.%m.%d)\"/iso_version=\"$2\"/" /iso/perfil/profiledef.sh
-	echo -e "\nrm -rf installer\ngit clone -b $2 https://github.com/cambonos/installer\ngit clone https://github.com/Cambon18/xfce.git\ngit clone https://github.com/Cambon18/qtile.git" >> .zshrc
+	echo -e "\nrm -rf installer xfce qtile\ngit clone -b $2 https://github.com/cambonos/installer\ngit clone https://github.com/Cambon18/xfce.git\ngit clone https://github.com/Cambon18/qtile.git" >> .zshrc
 fi
-echo -e 'sh installer/dialog.sh; if [[ $(cat /tmp/FIN_ERR) -eq 1 ]]; then dialog --title " CambonOS Installer " --msgbox "\nHa ocurrido un error en la instalación, se va a reiniciar el equipo.\nRetire el USB y pulse ENTER" 7 80; else dialog --title " CambonOS Installer " --msgbox "\nEl instalador a finalizado\nRetire el USB y pulse ENTER" 7 80; fi; reboot' >> .zshrc
+echo -e 'sh installer/dialog.sh; if [[ $(cat /tmp/FIN_ERR) -eq 1 ]]; then dialog --title " CambonOS Installer " --msgbox "\nHa ocurrido un error en la instalación, se va a reiniciar el equipo.\nRetire el USB y pulse ENTER" 7 80; else dialog --title " CambonOS Installer " --msgbox "\nEl instalador ha finalizado\nRetire el USB y pulse ENTER" 7 80; fi; reboot' >> .zshrc
 DONE
 
 echo -e "${BLUE}\n>>Creando la ISO${NOCOLOR}"
