@@ -17,7 +17,7 @@ DONE () {
 
 if [[ $EUID -ne 0 ]]
 then
-	echo -e "${RED}Debese ejecutar como usuario con privilegios${NOCOLOR}"
+	echo -e "${RED}Debe ejecutarse como usuario con privilegios (sudo ./cambonos-mkiso)${NOCOLOR}"
 	exit
 fi
 
