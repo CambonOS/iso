@@ -34,8 +34,19 @@ mkdir -p /iso/perfil
 cp -rv /usr/share/archiso/configs/releng/* /iso/perfil || ERROR
 rm /iso/perfil/efiboot/loader/entries/02*
 rm /iso/perfil/efiboot/loader/entries/03*
-echo -e "neovim\ngit\nnetworkmanager\ndialog" >>/iso/perfil/packages.x86_64
-cp -rv iso/* /iso/perfil || ERROR
+PROFILE_SOURCE="/usr/share/cambonos-mkiso/iso"
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+if [[ "${SCRIPT_PATH}" != "/usr/bin/cambonos-mkiso" || ! -d "${PROFILE_SOURCE}" ]]; then
+	PROFILE_SOURCE="iso"
+fi
+cp -rv "${PROFILE_SOURCE}"/* /iso/perfil || ERROR
+echo -e "neovim\ngit\nnetworkmanager\ndialog\ncambonos-keyring\ncambonos-installer\ncambonos-pacman" >>/iso/perfil/packages.x86_64
+REPOSITORY_CHANNEL=stable
+if [[ $1 = "-b" ]]; then
+	REPOSITORY_CHANNEL=testing
+fi
+printf '\n[cambonos]\nSigLevel = Required TrustedOnly\nServer = https://mirror.cambonos.org/%s/$arch\n' \
+	"${REPOSITORY_CHANNEL}" >> /iso/perfil/pacman.conf
 cd /tmp
 git clone https://github.com/CambonOS/installer.git
 if [[ $1 = "-t" ]]
@@ -72,7 +83,19 @@ then
 	sed -i "s/iso_version=\"\$(date +%Y.%m.%d)\"/iso_version=\"$2\"/" /iso/perfil/profiledef.sh
 	echo -e "\nrm -rf installer xfce qtile\ngit clone -b $2 https://github.com/cambonos/installer\ngit clone https://github.com/Cambon18/xfce.git\ngit clone https://github.com/Cambon18/qtile.git" >> .zshrc
 fi
-echo -e 'sh installer/dialog.sh; if [[ $(cat /tmp/FIN_ERR) -eq 1 ]]; then dialog --title " CambonOS Installer " --msgbox "\nHa ocurrido un error en la instalación, se va a reiniciar el equipo.\nRetire el USB y pulse ENTER" 7 80; else dialog --title " CambonOS Installer " --msgbox "\nEl instalador ha finalizado\nRetire el USB y pulse ENTER" 7 80; fi; reboot' >> .zshrc
+INSTALLER_COMMAND='cambonos-installer'
+if [[ $1 = "-t" || $1 = "-b" ]]; then
+	INSTALLER_COMMAND='sh installer/dialog.sh'
+fi
+cat >> .zshrc <<EOF
+${INSTALLER_COMMAND}
+if [[ \$(cat /tmp/FIN_ERR) -eq 1 ]]; then
+	dialog --title " CambonOS Installer " --msgbox "Ha ocurrido un error en la instalación, se va a reiniciar el equipo. Retire el USB y pulse ENTER" 7 80
+else
+	dialog --title " CambonOS Installer " --msgbox "El instalador ha finalizado. Retire el USB y pulse ENTER" 7 80
+fi
+reboot
+EOF
 DONE
 
 echo -e "${BLUE}\n>>Creando la ISO${NOCOLOR}"
