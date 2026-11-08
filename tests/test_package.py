@@ -44,6 +44,24 @@ class MkisoPackageTests(unittest.TestCase):
         self.assertNotIn("/tmp/FIN_ERR", script)
         self.assertNotIn("git clone https://github.com/CambonOS/installer", script)
 
+    def test_builder_removes_conflicting_package_from_profile(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            profile_directory = Path(temporary_directory)
+            package_list = profile_directory / "packages.x86_64"
+            package_list.write_text("base\ngrml-zsh-config\ncambonos-zsh\n")
+            subprocess.run(
+                [
+                    "bash",
+                    "-c",
+                    'source "$1"; PROFILE_DIR="$2"; remove_package grml-zsh-config',
+                    "test-builder",
+                    str(ROOT / "files" / "bin" / "cambonos-mkiso"),
+                    str(profile_directory),
+                ],
+                check=True,
+            )
+            self.assertEqual(package_list.read_text(), "base\ncambonos-zsh\n")
+
     def test_testing_option_writes_testing_repository_configuration(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             pacman_conf = Path(temporary_directory) / "pacman.conf"

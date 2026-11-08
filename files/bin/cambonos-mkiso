@@ -47,6 +47,11 @@ ensure_package() {
 		printf '%s\n' "$package_name" >> "$PROFILE_DIR/packages.x86_64"
 }
 
+remove_package() {
+	local package_name=$1
+	sed -i "/^${package_name}$/d" "$PROFILE_DIR/packages.x86_64"
+}
+
 select_repository() {
 	case "${1:-}" in
 		'') ;;
@@ -122,6 +127,7 @@ prepare_profile() {
 	mkdir -p "$PROFILE_DIR"
 	cp -a "$RELENG_PROFILE/." "$PROFILE_DIR/"
 	cp -a "$source_dir/." "$PROFILE_DIR/"
+	remove_package grml-zsh-config
 
 	find "$PROFILE_DIR/efiboot/loader/entries" -maxdepth 1 -type f \
 		\( -name '02*' -o -name '03*' \) -delete
@@ -129,10 +135,8 @@ prepare_profile() {
 	ensure_package git
 	ensure_package networkmanager
 	ensure_package dialog
-	ensure_package cambonos-keyring
 	ensure_package cambonos-base
 	ensure_package cambonos-installer
-	ensure_package cambonos-pacman
 
 	append_repository_configuration "$PROFILE_DIR/pacman.conf"
 	write_live_repository_configuration
@@ -149,7 +153,7 @@ main() {
 		*) select_repository "${1:-}" || { usage >&2; return 2; } ;;
 	esac
 	[[ $EUID -eq 0 ]] || fail 'Debe ejecutarse como root, por ejemplo: sudo cambonos-mkiso'
-	require_commands mkarchiso git cp find grep mkdir mktemp realpath
+	require_commands mkarchiso git cp find grep mkdir mktemp realpath sed
 
 	output_dir=$PWD
 	read -r -e -i "$output_dir" -p 'Directorio de salida de la ISO: ' output_dir
