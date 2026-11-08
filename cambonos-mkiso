@@ -1,109 +1,150 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-NOCOLOR='\033[0m'
-RED='\033[1;31m'
-GREEN='\033[1;32m'
-BLUE='\033[1;34m'
+set -Eeuo pipefail
 
-ERROR () {
-  echo -e "${RED}ERROR${NOCOLOR}"
-  exit
-}
+readonly TITLE='CambonOS ISO Builder'
+readonly RELENG_PROFILE='/usr/share/archiso/configs/releng'
+readonly PACKAGED_PROFILE='/usr/share/cambonos-mkiso/iso'
+readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
-DONE () {
-  echo -e "${GREEN}DONE${NOCOLOR}"
-  sleep 1
-}
+WORK_DIR=''
+REPOSITORY_NAME='cambonos'
+REPOSITORY_CHANNEL='stable'
 
-if [[ $EUID -ne 0 ]]
-then
-	echo -e "${RED}Debe ejecutarse como usuario con privilegios (sudo ./cambonos-mkiso)${NOCOLOR}"
-	exit
-fi
+usage() {
+	cat <<'EOF'
+Uso: cambonos-mkiso [--testing]
 
-echo -e "${BLUE}>>Carpeta destino ISO:${NOCOLOR}\c"
-read -e -i $(pwd) RUTAD
-
-echo -e "${BLUE}\n>>Instalando paquetes necesarios${NOCOLOR}"
-sleep 2
-pacman --noconfirm -Sy archiso && DONE || ERROR
-
-echo -e "${BLUE}\n>>Creando ficheros de configuracion de la ISO${NOCOLOR}"
-rm -rf /iso
-mkdir -p /iso/perfil
-cp -rv /usr/share/archiso/configs/releng/* /iso/perfil || ERROR
-rm /iso/perfil/efiboot/loader/entries/02*
-rm /iso/perfil/efiboot/loader/entries/03*
-PROFILE_SOURCE="/usr/share/cambonos-mkiso/iso"
-SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
-if [[ "${SCRIPT_PATH}" != "/usr/bin/cambonos-mkiso" || ! -d "${PROFILE_SOURCE}" ]]; then
-	PROFILE_SOURCE="iso"
-fi
-cp -rv "${PROFILE_SOURCE}"/* /iso/perfil || ERROR
-echo -e "neovim\ngit\nnetworkmanager\ndialog\ncambonos-keyring\ncambonos-installer\ncambonos-pacman" >>/iso/perfil/packages.x86_64
-REPOSITORY_CHANNEL=stable
-if [[ $1 = "-b" ]]; then
-	REPOSITORY_CHANNEL=testing
-fi
-printf '\n[cambonos]\nSigLevel = Required TrustedOnly\nServer = https://mirror.cambonos.org/%s/$arch\n' \
-	"${REPOSITORY_CHANNEL}" >> /iso/perfil/pacman.conf
-cd /tmp
-git clone https://github.com/CambonOS/installer.git
-if [[ $1 = "-t" ]]
-then
-	sed -i "s/iso_version=\"\$(date +%Y.%m.%d)\"/iso_version=\"$2\"/" /iso/perfil/profiledef.sh
-	cd installer
-	git checkout tags/$2
-	cd ..
-fi
-cp -rv installer /iso/perfil/airootfs/root/
-rm -rf installer
-git clone https://github.com/Cambon18/xfce.git
-if [[ $1 = "-t" ]]
-then
-	cd xfce
-	git checkout tags/$2
-	cd ..
-fi
-cp -rv xfce /iso/perfil/airootfs/root/
-rm -rf xfce
-git clone https://github.com/Cambon18/qtile.git
-if [[ $1 = "-t" ]]
-then
-	cd qtile
-	git checkout tags/$2
-	cd ..
-fi
-cp -rv qtile /iso/perfil/airootfs/root/
-rm -rf qtile
-cd /iso/perfil/airootfs/root
-echo -e "while true\ndo\n\tping -c 2 archlinux.org && break\n\tsystemctl start NetworkManager.service\n\tsleep 5\n\tnmtui connect\ndone" > .zshrc
-if [[ $1 = "-b" ]]
-then
-	sed -i "s/iso_version=\"\$(date +%Y.%m.%d)\"/iso_version=\"$2\"/" /iso/perfil/profiledef.sh
-	echo -e "\nrm -rf installer xfce qtile\ngit clone -b $2 https://github.com/cambonos/installer\ngit clone https://github.com/Cambon18/xfce.git\ngit clone https://github.com/Cambon18/qtile.git" >> .zshrc
-fi
-INSTALLER_COMMAND='cambonos-installer'
-if [[ $1 = "-t" || $1 = "-b" ]]; then
-	INSTALLER_COMMAND='sh installer/dialog.sh'
-fi
-cat >> .zshrc <<EOF
-${INSTALLER_COMMAND}
-if [[ \$(cat /tmp/FIN_ERR) -eq 1 ]]; then
-	dialog --title " CambonOS Installer " --msgbox "Ha ocurrido un error en la instalación, se va a reiniciar el equipo. Retire el USB y pulse ENTER" 7 80
-else
-	dialog --title " CambonOS Installer " --msgbox "El instalador ha finalizado. Retire el USB y pulse ENTER" 7 80
-fi
-reboot
+Genera una ISO de CambonOS. Por defecto utiliza el canal stable; --testing
+selecciona el repositorio CambonOS testing. Solicita el directorio de salida y
+requiere root, archiso y conexión a Internet.
 EOF
-DONE
+}
 
-echo -e "${BLUE}\n>>Creando la ISO${NOCOLOR}"
-sleep 2; cd
-mkarchiso -v -w /iso/work -o $RUTAD /iso/perfil && DONE || ERROR
+fail() {
+	printf 'ERROR: %s\n' "$1" >&2
+	exit 1
+}
 
-echo -e "${BLUE}\n>>Eliminado ficheros/paquetes innecesarios${NOCOLOR}"
-sleep 2
-rm -rf /iso
-pacman --noconfirm -Rns archiso
-DONE
+cleanup() {
+	if [[ -n "$WORK_DIR" && -d "$WORK_DIR" ]]; then
+		rm -rf -- "$WORK_DIR"
+	fi
+}
+
+require_commands() {
+	local missing=()
+	local command_name
+	for command_name in "$@"; do
+		command -v "$command_name" >/dev/null 2>&1 || missing+=("$command_name")
+	done
+	((${#missing[@]} == 0)) || fail "Faltan comandos necesarios: ${missing[*]}"
+}
+
+ensure_package() {
+	local package_name=$1
+	grep -Fxq "$package_name" "$PROFILE_DIR/packages.x86_64" ||
+		printf '%s\n' "$package_name" >> "$PROFILE_DIR/packages.x86_64"
+}
+
+select_repository() {
+	case "${1:-}" in
+		'') ;;
+		--testing)
+			REPOSITORY_NAME='cambonos-testing'
+			REPOSITORY_CHANNEL='testing'
+			;;
+		*) return 2 ;;
+	esac
+}
+
+append_repository_configuration() {
+	local pacman_conf=$1
+	printf '\n[%s]\nSigLevel = Required TrustedOnly\nServer = https://mirror.cambonos.org/%s/$arch\n' \
+		"$REPOSITORY_NAME" "$REPOSITORY_CHANNEL" >> "$pacman_conf"
+}
+
+prepare_profile() {
+	local source_dir
+	if [[ -d "$PACKAGED_PROFILE" ]]; then
+		source_dir=$PACKAGED_PROFILE
+	elif [[ -d "$SCRIPT_DIR/iso" ]]; then
+		source_dir="$SCRIPT_DIR/iso"
+	else
+		fail 'No se encontró el perfil ArchISO incluido con cambonos-mkiso.'
+	fi
+
+	[[ -d "$RELENG_PROFILE" ]] || fail "No se encontró el perfil base de ArchISO: $RELENG_PROFILE"
+	PROFILE_DIR="$WORK_DIR/profile"
+	mkdir -p "$PROFILE_DIR"
+	cp -a "$RELENG_PROFILE/." "$PROFILE_DIR/"
+	cp -a "$source_dir/." "$PROFILE_DIR/"
+
+	find "$PROFILE_DIR/efiboot/loader/entries" -maxdepth 1 -type f \
+		\( -name '02*' -o -name '03*' \) -delete
+	ensure_package neovim
+	ensure_package git
+	ensure_package networkmanager
+	ensure_package dialog
+	ensure_package cambonos-keyring
+	ensure_package cambonos-installer
+	ensure_package cambonos-pacman
+
+	append_repository_configuration "$PROFILE_DIR/pacman.conf"
+}
+
+stage_desktops() {
+	local source_dir
+	for source_dir in xfce qtile; do
+		git clone --depth 1 "https://github.com/Cambon18/${source_dir}.git" "$WORK_DIR/$source_dir"
+		[[ -f "$WORK_DIR/$source_dir/archie.sh" ]] || fail "El repositorio $source_dir no contiene archie.sh."
+		cp -a "$WORK_DIR/$source_dir" "$PROFILE_DIR/airootfs/root/$source_dir"
+	done
+}
+
+configure_live_startup() {
+	cat > "$PROFILE_DIR/airootfs/root/.zshrc" <<'EOF'
+while ! ping -c 2 archlinux.org >/dev/null 2>&1; do
+	systemctl start NetworkManager.service
+	nmtui connect
+done
+
+if ! cambonos-installer; then
+	dialog --title 'CambonOS Installer' --msgbox 'La instalación devolvió un error. Consulte el registro mostrado por el instalador antes de reiniciar.' 8 76
+fi
+EOF
+}
+
+main() {
+	local output_dir
+	if (($# > 1)); then
+		usage >&2
+		return 2
+	fi
+	case "${1:-}" in
+		-h|--help) usage; return 0 ;;
+		*) select_repository "${1:-}" || { usage >&2; return 2; } ;;
+	esac
+	[[ $EUID -eq 0 ]] || fail 'Debe ejecutarse como root, por ejemplo: sudo cambonos-mkiso'
+	require_commands mkarchiso git cp find grep mkdir mktemp realpath
+
+	output_dir=$PWD
+	read -r -e -i "$output_dir" -p 'Directorio de salida de la ISO: ' output_dir
+	[[ -n "$output_dir" ]] || fail 'El directorio de salida no puede estar vacío.'
+	mkdir -p -- "$output_dir"
+	output_dir=$(realpath -m -- "$output_dir")
+
+	WORK_DIR=$(mktemp -d /tmp/cambonos-mkiso.XXXXXX)
+	prepare_profile
+	stage_desktops
+	configure_live_startup
+
+	printf 'Generando ISO en %s\n' "$output_dir"
+	mkarchiso -v -w "$WORK_DIR/work" -o "$output_dir" "$PROFILE_DIR"
+	printf 'ISO generada correctamente en %s\n' "$output_dir"
+}
+
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
+	trap cleanup EXIT
+	main "$@"
+fi
