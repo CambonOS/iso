@@ -4,7 +4,7 @@ set -Eeuo pipefail
 
 readonly TITLE='CambonOS ISO Builder'
 readonly RELENG_PROFILE='/usr/share/archiso/configs/releng'
-readonly PACKAGED_PROFILE='/usr/share/cambonos-mkiso/iso'
+readonly PACKAGED_PROFILE='/usr/share/cambonos-mkiso/profile'
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 WORK_DIR=''
@@ -58,18 +58,61 @@ select_repository() {
 	esac
 }
 
+repository_configuration() {
+	printf '[%s]\nSigLevel = Required TrustedOnly\nServer = https://mirror.cambonos.org/%s/$arch\n' \
+		"$REPOSITORY_NAME" "$REPOSITORY_CHANNEL"
+}
+
 append_repository_configuration() {
 	local pacman_conf=$1
-	printf '\n[%s]\nSigLevel = Required TrustedOnly\nServer = https://mirror.cambonos.org/%s/$arch\n' \
-		"$REPOSITORY_NAME" "$REPOSITORY_CHANNEL" >> "$pacman_conf"
+	printf '\n' >> "$pacman_conf"
+	repository_configuration >> "$pacman_conf"
+}
+
+write_live_repository_configuration() {
+	local config_dir="$PROFILE_DIR/airootfs/etc/pacman.d"
+	mkdir -p "$config_dir"
+	repository_configuration > "$config_dir/cambonos.conf"
+}
+
+stage_desktops() {
+	local source_dir
+	for source_dir in xfce qtile; do
+		git clone --depth 1 "https://github.com/Cambon18/${source_dir}.git" "$WORK_DIR/$source_dir"
+		[[ -f "$WORK_DIR/$source_dir/archie.sh" ]] || fail "El repositorio $source_dir no contiene archie.sh."
+		cp -a "$WORK_DIR/$source_dir" "$PROFILE_DIR/airootfs/root/$source_dir"
+	done
+}
+
+configure_live_startup() {
+	mkdir -p "$PROFILE_DIR/airootfs/root"
+	if [[ ! -f "$PROFILE_DIR/airootfs/root/.zshrc" ]]; then
+		cat > "$PROFILE_DIR/airootfs/root/.zshrc" <<'EOF'
+if ! ping -c 1 mirror.cambonos.org >/dev/null 2>&1; then
+	systemctl start NetworkManager.service || true
+	nmtui || true
+	if ! ping -c 1 mirror.cambonos.org >/dev/null 2>&1; then
+		nmtui || true
+	fi
+fi
+
+if ! pacman -Syu --noconfirm cambonos-installer; then
+	printf '%s\n' 'No se pudo actualizar cambonos-installer desde el repositorio CambonOS.' >&2
+fi
+
+if ! cambonos-installer; then
+	dialog --title 'CambonOS Installer' --msgbox 'La instalación devolvió un error. Consulte el registro mostrado por el instalador antes de reiniciar.' 8 76 || true
+fi
+EOF
+	fi
 }
 
 prepare_profile() {
 	local source_dir
 	if [[ -d "$PACKAGED_PROFILE" ]]; then
 		source_dir=$PACKAGED_PROFILE
-	elif [[ -d "$SCRIPT_DIR/iso" ]]; then
-		source_dir="$SCRIPT_DIR/iso"
+	elif [[ -d "$SCRIPT_DIR/../profile" ]]; then
+		source_dir="$SCRIPT_DIR/../profile"
 	else
 		fail 'No se encontró el perfil ArchISO incluido con cambonos-mkiso.'
 	fi
@@ -87,32 +130,12 @@ prepare_profile() {
 	ensure_package networkmanager
 	ensure_package dialog
 	ensure_package cambonos-keyring
+	ensure_package cambonos-base
 	ensure_package cambonos-installer
 	ensure_package cambonos-pacman
 
 	append_repository_configuration "$PROFILE_DIR/pacman.conf"
-}
-
-stage_desktops() {
-	local source_dir
-	for source_dir in xfce qtile; do
-		git clone --depth 1 "https://github.com/Cambon18/${source_dir}.git" "$WORK_DIR/$source_dir"
-		[[ -f "$WORK_DIR/$source_dir/archie.sh" ]] || fail "El repositorio $source_dir no contiene archie.sh."
-		cp -a "$WORK_DIR/$source_dir" "$PROFILE_DIR/airootfs/root/$source_dir"
-	done
-}
-
-configure_live_startup() {
-	cat > "$PROFILE_DIR/airootfs/root/.zshrc" <<'EOF'
-while ! ping -c 2 archlinux.org >/dev/null 2>&1; do
-	systemctl start NetworkManager.service
-	nmtui connect
-done
-
-if ! cambonos-installer; then
-	dialog --title 'CambonOS Installer' --msgbox 'La instalación devolvió un error. Consulte el registro mostrado por el instalador antes de reiniciar.' 8 76
-fi
-EOF
+	write_live_repository_configuration
 }
 
 main() {

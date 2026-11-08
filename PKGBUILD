@@ -10,8 +10,8 @@ depends=('archiso' 'bash' 'cambonos-keyring' 'coreutils' 'git' 'pacman')
 package() {
   install -Dm644 "$startdir/LICENSE" \
     "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-  install -Dm755 "$startdir/cambonos-mkiso" \
+  install -Dm755 "$startdir/files/bin/cambonos-mkiso" \
     "$pkgdir/usr/bin/cambonos-mkiso"
-  install -d "$pkgdir/usr/share/cambonos-mkiso/iso"
-  cp -a "$startdir/iso/." "$pkgdir/usr/share/cambonos-mkiso/iso/"
+  install -d "$pkgdir/usr/share/cambonos-mkiso/profile"
+  cp -a "$startdir/files/profile/." "$pkgdir/usr/share/cambonos-mkiso/profile/"
 }

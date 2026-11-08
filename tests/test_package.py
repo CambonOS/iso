@@ -10,16 +10,17 @@ ROOT = Path(__file__).resolve().parents[1]
 class MkisoPackageTests(unittest.TestCase):
     def test_package_metadata_and_profile(self):
         build = (ROOT / "PKGBUILD").read_text()
-        script = (ROOT / "cambonos-mkiso").read_text()
+        script = (ROOT / "files" / "bin" / "cambonos-mkiso").read_text()
         self.assertIn("pkgname=cambonos-mkiso", build)
         self.assertIn("pkgrel=6", build)
         self.assertIn("'archiso'", build)
-        self.assertIn("/usr/share/cambonos-mkiso/iso", build)
-        self.assertIn("PACKAGED_PROFILE='/usr/share/cambonos-mkiso/iso'", script)
+        self.assertIn("/usr/share/cambonos-mkiso/profile", build)
+        self.assertIn("PACKAGED_PROFILE='/usr/share/cambonos-mkiso/profile'", script)
         self.assertIn("Required TrustedOnly", script)
         self.assertIn("https://mirror.cambonos.org/%s/$arch", script)
         self.assertIn("REPOSITORY_CHANNEL='stable'", script)
         for package in (
+            "cambonos-base",
             "cambonos-installer",
             "cambonos-keyring",
             "cambonos-pacman",
@@ -27,12 +28,18 @@ class MkisoPackageTests(unittest.TestCase):
             "networkmanager",
         ):
             self.assertIn(f"ensure_package {package}", script)
-        self.assertTrue((ROOT / "iso/profiledef.sh").is_file())
+        self.assertTrue((ROOT / "files" / "profile" / "profiledef.sh").is_file())
         self.assertTrue((ROOT / "LICENSE").is_file())
 
     def test_builder_runs_only_the_installed_installer(self):
-        script = (ROOT / "cambonos-mkiso").read_text()
+        script = (ROOT / "files" / "bin" / "cambonos-mkiso").read_text()
+        self.assertIn("ping -c 1 mirror.cambonos.org", script)
+        self.assertIn("nmtui || true", script)
+        self.assertIn("if ! ping -c 1 mirror.cambonos.org >/dev/null 2>&1; then", script)
+        self.assertIn("if ! pacman -Syu --noconfirm cambonos-installer; then", script)
         self.assertIn("if ! cambonos-installer; then", script)
+        self.assertTrue((ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc").is_file())
+        self.assertIn("nmtui || true", (ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc").read_text())
         self.assertNotIn("installer/dialog.sh", script)
         self.assertNotIn("/tmp/FIN_ERR", script)
         self.assertNotIn("git clone https://github.com/CambonOS/installer", script)
@@ -46,7 +53,7 @@ class MkisoPackageTests(unittest.TestCase):
                     "-c",
                     'source "$1"; select_repository "$2"; append_repository_configuration "$3"',
                     "test-builder",
-                    str(ROOT / "cambonos-mkiso"),
+                    str(ROOT / "files" / "bin" / "cambonos-mkiso"),
                     "--testing",
                     str(pacman_conf),
                 ],
@@ -68,7 +75,7 @@ class MkisoPackageTests(unittest.TestCase):
                     "-c",
                     'source "$1"; select_repository; append_repository_configuration "$2"',
                     "test-builder",
-                    str(ROOT / "cambonos-mkiso"),
+                    str(ROOT / "files" / "bin" / "cambonos-mkiso"),
                     str(pacman_conf),
                 ],
                 check=True,
@@ -80,7 +87,7 @@ class MkisoPackageTests(unittest.TestCase):
         for option in ("-t", "-b"):
             with self.subTest(option=option):
                 result = subprocess.run(
-                    [str(ROOT / "cambonos-mkiso"), option],
+                    [str(ROOT / "files" / "bin" / "cambonos-mkiso"), option],
                     capture_output=True,
                     text=True,
                 )
@@ -88,7 +95,7 @@ class MkisoPackageTests(unittest.TestCase):
 
     def test_builder_is_executable_from_checkout(self):
         result = subprocess.run(
-            [str(ROOT / "cambonos-mkiso"), "--help"],
+            [str(ROOT / "files" / "bin" / "cambonos-mkiso"), "--help"],
             check=True,
             capture_output=True,
             text=True,
@@ -96,13 +103,13 @@ class MkisoPackageTests(unittest.TestCase):
         self.assertIn("[--testing]", result.stdout)
 
     def test_builder_does_not_remove_host_data_or_archiso(self):
-        script = (ROOT / "cambonos-mkiso").read_text()
+        script = (ROOT / "files" / "bin" / "cambonos-mkiso").read_text()
         self.assertIn('mktemp -d /tmp/cambonos-mkiso.XXXXXX', script)
         self.assertNotIn("rm -rf /iso", script)
         self.assertNotIn("pacman --noconfirm -Rns archiso", script)
 
     def test_builder_and_package_have_valid_bash_syntax(self):
-        for path in (ROOT / "PKGBUILD", ROOT / "cambonos-mkiso"):
+        for path in (ROOT / "PKGBUILD", ROOT / "files" / "bin" / "cambonos-mkiso"):
             with self.subTest(path=path.name):
                 subprocess.run(["bash", "-n", str(path)], check=True)
 
