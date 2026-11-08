@@ -2,10 +2,10 @@
 # shellcheck disable=SC2034
 
 iso_name="CambonOS"
-iso_label="CambonOS_$(date +%y.%m)"
+iso_label="CambonOS_$(date +%Y.%m)"
 iso_publisher="CambonOS <https://github.com/CambonOS/Linux>"
 iso_application="CambonOS Installer"
-iso_version="$(date +%Y.%m.%d)"
+iso_version="$(date +%Y.%m)"
 install_dir="cambonos"
 buildmodes=('iso')
 bootmodes=('bios.syslinux'

@@ -112,6 +112,23 @@ EOF
 	fi
 }
 
+write_iso_metadata() {
+	local iso_name_value="CambonOS"
+	local iso_tag_suffix=''
+
+	if [[ "$REPOSITORY_CHANNEL" == 'testing' ]]; then
+		iso_tag_suffix='-testing'
+	fi
+
+	iso_name_value="CambonOS${iso_tag_suffix}"
+
+	sed -i \
+		-e "s|^iso_name=.*|iso_name=\"${iso_name_value}\"|" \
+		-e "s|^iso_label=.*|iso_label=\"CambonOS${iso_tag_suffix}_\$(date +%Y.%m)\"|" \
+		-e "s|^iso_version=.*|iso_version=\"\$(date +%Y.%m)\"|" \
+		"$PROFILE_DIR/profiledef.sh"
+}
+
 prepare_profile() {
 	local source_dir
 	if [[ -d "$PACKAGED_PROFILE" ]]; then
@@ -139,6 +156,7 @@ prepare_profile() {
 	ensure_package cambonos-installer
 
 	append_repository_configuration "$PROFILE_DIR/pacman.conf"
+	write_iso_metadata
 	write_live_repository_configuration
 }
 

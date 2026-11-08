@@ -120,6 +120,33 @@ class MkisoPackageTests(unittest.TestCase):
         )
         self.assertIn("[--testing]", result.stdout)
 
+    def test_builder_sets_testing_iso_name_and_year_month_version(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            profile_directory = Path(temporary_directory) / "profile"
+            profile_directory.mkdir()
+            profile_def = profile_directory / "profiledef.sh"
+            profile_def.write_text(
+                '#!/usr/bin/env bash\n'
+                'iso_name="CambonOS"\n'
+                'iso_label="CambonOS_$(date +%Y.%m)"\n'
+                'iso_version="$(date +%Y.%m.%d)"\n'
+            )
+            subprocess.run(
+                [
+                    "bash",
+                    "-c",
+                    'source "$1"; PROFILE_DIR="$2"; REPOSITORY_CHANNEL="testing"; write_iso_metadata',
+                    "test-builder",
+                    str(ROOT / "files" / "bin" / "cambonos-mkiso"),
+                    str(profile_directory),
+                ],
+                check=True,
+            )
+            content = profile_def.read_text()
+            self.assertIn('iso_name="CambonOS-testing"', content)
+            self.assertIn('iso_label="CambonOS-testing_$(date +%Y.%m)"', content)
+            self.assertIn('iso_version="$(date +%Y.%m)"', content)
+
     def test_builder_does_not_remove_host_data_or_archiso(self):
         script = (ROOT / "files" / "bin" / "cambonos-mkiso").read_text()
         self.assertIn('mktemp -d /tmp/cambonos-mkiso.XXXXXX', script)
