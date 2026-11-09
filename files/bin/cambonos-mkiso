@@ -85,43 +85,12 @@ EOF
 
 stage_desktops() {
 	local source_dir
+	mkdir -p "$PROFILE_DIR/airootfs/root"
 	for source_dir in xfce qtile; do
 		git clone --depth 1 "https://github.com/Cambon18/${source_dir}.git" "$WORK_DIR/$source_dir"
 		[[ -f "$WORK_DIR/$source_dir/archie.sh" ]] || fail "El repositorio $source_dir no contiene archie.sh."
 		cp -a "$WORK_DIR/$source_dir" "$PROFILE_DIR/airootfs/root/$source_dir"
 	done
-}
-
-configure_live_startup() {
-	mkdir -p "$PROFILE_DIR/airootfs/root"
-	if [[ ! -f "$PROFILE_DIR/airootfs/root/.zshrc" ]]; then
-		cat > "$PROFILE_DIR/airootfs/root/.zshrc" <<'EOF'
-if ! reflector -l 10 -f 5 --save /etc/pacman.d/mirrorlist; then
-	systemctl start NetworkManager.service || true
-	dialog --title 'CambonOS Installer' --msgbox 'Fallo en la conexion de red. Se lanzara nmtui para poder configurar la conexión.' 8 76 || true
-	nmtui || true
-	if ! reflector -l 10 -f 5 --save /etc/pacman.d/mirrorlist; then
-		dialog --title 'CambonOS Installer' --msgbox 'No se pudieron obtener mirrors de Arch Linux. Comprueba la red e inténtalo de nuevo.' 8 76 || true
-	fi
-fi
-
-if ! pacman -Syu --noconfirm cambonos-installer; then
-	printf '%s\n' 'No se pudo actualizar cambonos-installer desde el repositorio CambonOS.' >&2
-fi
-
-cambonos-installer
-
-clear
-cambonos-fastfetch
-echo ""
-echo "  To start the installation at any time, run:"
-echo "    cambonos-installer"
-echo ""
-echo "  To shut down the system, run:"
-echo "    poweroff"
-echo ""
-EOF
-	fi
 }
 
 write_iso_metadata() {
@@ -182,7 +151,6 @@ main() {
 	WORK_DIR=$(mktemp -d /tmp/cambonos-mkiso.XXXXXX)
 	prepare_profile
 	stage_desktops
-	configure_live_startup
 
 	printf 'Generando ISO en %s\n' "$output_dir"
 	mkarchiso -v -w "$WORK_DIR/work" -o "$output_dir" "$PROFILE_DIR"

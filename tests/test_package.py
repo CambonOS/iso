@@ -13,7 +13,7 @@ class MkisoPackageTests(unittest.TestCase):
         script = (ROOT / "files" / "bin" / "cambonos-mkiso").read_text()
         self.assertIn("pkgname=cambonos-mkiso", build)
         self.assertIn("pkgver=0.2.0", build)
-        self.assertIn("pkgrel=5", build)
+        self.assertIn("pkgrel=6", build)
         self.assertIn("'archiso'", build)
         self.assertIn("'grub'", build)
         self.assertIn("/usr/share/cambonos-mkiso/profile", build)
@@ -72,15 +72,20 @@ class MkisoPackageTests(unittest.TestCase):
 
     def test_builder_runs_only_the_installed_installer(self):
         script = (ROOT / "files" / "bin" / "cambonos-mkiso").read_text()
-        self.assertIn("nmtui || true", script)
-        self.assertIn("if ! pacman -Syu --noconfirm cambonos-installer; then", script)
+        self.assertNotIn("configure_live_startup", script)
+        self.assertNotIn("cat > \"$PROFILE_DIR/airootfs/root/.zshrc\"", script)
         self.assertTrue((ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc").is_file())
         zshrc = (ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc").read_text()
-        self.assertIn("if ! reflector -l 10 -f 5 --save /etc/pacman.d/mirrorlist; then", zshrc)
-        self.assertIn("reflector -l 10 -f 5 --save /etc/pacman.d/mirrorlist", script)
+        self.assertIn("dialog --title 'CambonOS Network' --sleep 1 --infobox 'Checking network connection...' 5 64", zshrc)
+        self.assertIn("failed_network_checks=0", zshrc)
+        self.assertIn("if ((failed_network_checks >= 5)); then", zshrc)
+        self.assertIn("reflector -l 10 -f 5 --save /etc/pacman.d/mirrorlist", zshrc)
         self.assertNotIn("ping -c 1 mirror.cambonos.org", zshrc)
         self.assertIn("systemctl start NetworkManager.service >/dev/null 2>&1 || true", zshrc)
-        self.assertIn("dialog --title 'CambonOS Installer' --msgbox 'Network connection failed.", zshrc)
+        self.assertIn("nmtui || true", zshrc)
+        self.assertLess(zshrc.index("--infobox 'Checking network connection..."), zshrc.index("reflector -l 10"))
+        self.assertLess(zshrc.index("if ((failed_network_checks >= 5)); then"), zshrc.index("nmtui || true"))
+        self.assertLess(zshrc.index("nmtui || true"), zshrc.rindex("failed_network_checks=0"))
         self.assertIn("if ! pacman -Syu --noconfirm cambonos-installer >/dev/null 2>&1; then", zshrc)
         self.assertIn("dialog --title 'CambonOS Installer' --msgbox 'Could not update cambonos-installer", zshrc)
         self.assertIn("clear\ncambonos-fastfetch", zshrc)
@@ -90,12 +95,31 @@ class MkisoPackageTests(unittest.TestCase):
         self.assertIn('echo "To start the installation at any time, run:"', zshrc)
         self.assertIn('echo "To configure the network, run:"', zshrc)
         self.assertIn('echo "To shut down the system, run:"', zshrc)
-        self.assertNotIn("Fallo", zshrc)
-        self.assertNotIn("No se pudo", zshrc)
         self.assertNotIn("if ! cambonos-installer; then", zshrc)
         self.assertNotIn("installer/dialog.sh", script)
         self.assertNotIn("/tmp/FIN_ERR", script)
         self.assertNotIn("git clone https://github.com/CambonOS/installer", script)
+
+    def test_live_network_retries_nmtui_after_five_failures(self):
+        zshrc = ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc"
+        subprocess.run(
+            [
+                "bash",
+                "-c",
+                'network_checks=0; nmtui_calls=0; '
+                'dialog() { :; }; systemctl() { :; }; '
+                'reflector() { network_checks=$((network_checks + 1)); ((network_checks > 5)); }; '
+                'nmtui() { nmtui_calls=$((nmtui_calls + 1)); }; '
+                'clear() { :; }; cambonos-fastfetch() { :; }; '
+                'source "$1" >/dev/null; '
+                'test "$network_checks" -eq 6 && test "$nmtui_calls" -eq 1',
+                "test-live-network",
+                str(zshrc),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
 
     def test_testing_option_writes_testing_repository_configuration(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

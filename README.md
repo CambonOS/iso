@@ -12,8 +12,9 @@ de copiar el perfil `releng` del host. Mantiene Syslinux para BIOS y usa GRUB
 con el tema CambonOS para UEFI. El live contiene `cambonos-base`,
 `cambonos-grub` y `cambonos-installer`, además del conjunto mínimo de arranque,
 red y servicios de pacman. Al arrancar, `reflector` actualiza la mirrorlist de
-Arch y valida la conectividad; la configuración live activa los repositorios de
-Arch y el canal CambonOS elegido. El perfil define los hooks `mkinitcpio-archiso`
+Arch y valida la conectividad tras una pausa de un segundo; tras cinco fallos se
+vuelve a abrir `nmtui` y se reintenta hasta validar la conexión. La configuración live activa
+los repositorios de Arch y el canal CambonOS elegido. El perfil define los hooks `mkinitcpio-archiso`
 necesarios para montar y arrancar el sistema live. El builder añade el repositorio CambonOS con
 `Required TrustedOnly` y actualiza `cambonos-installer` antes de ejecutarlo.
 XFCE y Qtile se siguen clonando en `/root` para que el instalador pueda
