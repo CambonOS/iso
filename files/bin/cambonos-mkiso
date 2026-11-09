@@ -3,7 +3,6 @@
 set -Eeuo pipefail
 
 readonly TITLE='CambonOS ISO Builder'
-readonly RELENG_PROFILE='/usr/share/archiso/configs/releng'
 readonly PACKAGED_PROFILE='/usr/share/cambonos-mkiso/profile'
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -17,7 +16,7 @@ Uso: cambonos-mkiso [--testing]
 
 Genera una ISO de CambonOS. Por defecto utiliza el canal stable; --testing
 selecciona el repositorio CambonOS testing. Solicita el directorio de salida y
-requiere root, archiso y conexión a Internet.
+requiere root, archiso, grub y conexión a Internet.
 EOF
 }
 
@@ -39,17 +38,6 @@ require_commands() {
 		command -v "$command_name" >/dev/null 2>&1 || missing+=("$command_name")
 	done
 	((${#missing[@]} == 0)) || fail "Faltan comandos necesarios: ${missing[*]}"
-}
-
-ensure_package() {
-	local package_name=$1
-	grep -Fxq "$package_name" "$PROFILE_DIR/packages.x86_64" ||
-		printf '%s\n' "$package_name" >> "$PROFILE_DIR/packages.x86_64"
-}
-
-remove_package() {
-	local package_name=$1
-	sed -i "/^${package_name}$/d" "$PROFILE_DIR/packages.x86_64"
 }
 
 select_repository() {
@@ -149,21 +137,9 @@ prepare_profile() {
 		fail 'No se encontró el perfil ArchISO incluido con cambonos-mkiso.'
 	fi
 
-	[[ -d "$RELENG_PROFILE" ]] || fail "No se encontró el perfil base de ArchISO: $RELENG_PROFILE"
 	PROFILE_DIR="$WORK_DIR/profile"
 	mkdir -p "$PROFILE_DIR"
-	cp -a "$RELENG_PROFILE/." "$PROFILE_DIR/"
 	cp -a "$source_dir/." "$PROFILE_DIR/"
-	remove_package grml-zsh-config
-
-	find "$PROFILE_DIR/efiboot/loader/entries" -maxdepth 1 -type f \
-		\( -name '02*' -o -name '03*' \) -delete
-	ensure_package neovim
-	ensure_package git
-	ensure_package networkmanager
-	ensure_package dialog
-	ensure_package cambonos-base
-	ensure_package cambonos-installer
 
 	append_repository_configuration "$PROFILE_DIR/pacman.conf"
 	write_iso_metadata
@@ -181,7 +157,7 @@ main() {
 		*) select_repository "${1:-}" || { usage >&2; return 2; } ;;
 	esac
 	[[ $EUID -eq 0 ]] || fail 'Debe ejecutarse como root, por ejemplo: sudo cambonos-mkiso'
-	require_commands mkarchiso git cp find grep mkdir mktemp realpath sed
+	require_commands mkarchiso grub-mkstandalone git cp mkdir mktemp realpath sed
 
 	output_dir=$PWD
 	read -r -e -i "$output_dir" -p 'Directorio de salida de la ISO: ' output_dir

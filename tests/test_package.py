@@ -12,23 +12,48 @@ class MkisoPackageTests(unittest.TestCase):
         build = (ROOT / "PKGBUILD").read_text()
         script = (ROOT / "files" / "bin" / "cambonos-mkiso").read_text()
         self.assertIn("pkgname=cambonos-mkiso", build)
-        self.assertIn("pkgrel=6", build)
+        self.assertIn("pkgrel=10", build)
         self.assertIn("'archiso'", build)
+        self.assertIn("'grub'", build)
         self.assertIn("/usr/share/cambonos-mkiso/profile", build)
         self.assertIn("PACKAGED_PROFILE='/usr/share/cambonos-mkiso/profile'", script)
         self.assertIn("Required TrustedOnly", script)
         self.assertIn("https://mirror.cambonos.org/%s/$arch", script)
         self.assertIn("REPOSITORY_CHANNEL='stable'", script)
+        profile = ROOT / "files" / "profile"
+        package_manifest = (profile / "packages.x86_64").read_text()
+        packages = package_manifest.splitlines()
+        self.assertNotIn("*** Add File:", package_manifest)
+        self.assertNotIn("xfce", packages)
+        self.assertNotIn("qtile", packages)
+        self.assertNotIn("*** Add File:", (profile / "pacman.conf").read_text())
+        self.assertTrue((profile / "profiledef.sh").is_file())
+        self.assertIn("'uefi.grub'", (profile / "profiledef.sh").read_text())
+        self.assertIn("'bios.syslinux'", (profile / "profiledef.sh").read_text())
         for package in (
             "cambonos-base",
+            "cambonos-grub",
             "cambonos-installer",
-            "cambonos-keyring",
-            "cambonos-pacman",
-            "dialog",
-            "networkmanager",
+            "git",
+            "mkinitcpio-archiso",
+            "shadow",
+            "sudo",
+            "syslinux",
         ):
-            self.assertIn(f"ensure_package {package}", script)
-        self.assertTrue((ROOT / "files" / "profile" / "profiledef.sh").is_file())
+            self.assertIn(package, packages)
+        self.assertTrue((profile / "grub" / "grub.cfg").is_file())
+        self.assertTrue((profile / "syslinux" / "syslinux.cfg").is_file())
+        archiso_hooks = profile / "airootfs" / "etc" / "mkinitcpio.conf.d" / "archiso.conf"
+        self.assertEqual(
+            archiso_hooks.read_text().strip(),
+            "HOOKS=(base udev modconf archiso block filesystems)",
+        )
+        self.assertTrue((profile / "airootfs" / "etc" / "systemd" / "system" / "pacman-init.service").is_file())
+        self.assertTrue((profile / "airootfs" / "etc" / "systemd" / "system" / "multi-user.target.wants" / "pacman-init.service").is_symlink())
+        self.assertTrue((profile / "airootfs" / "etc" / "systemd" / "system" / "multi-user.target.wants" / "NetworkManager.service").is_symlink())
+        self.assertFalse((profile / "efiboot" / "loader" / "loader.conf").exists())
+        self.assertNotIn("RELENG_PROFILE", script)
+        self.assertNotIn("ensure_package", script)
         self.assertTrue((ROOT / "LICENSE").is_file())
 
     def test_builder_runs_only_the_installed_installer(self):
@@ -37,30 +62,12 @@ class MkisoPackageTests(unittest.TestCase):
         self.assertIn("nmtui || true", script)
         self.assertIn("if ! ping -c 1 mirror.cambonos.org >/dev/null 2>&1; then", script)
         self.assertIn("if ! pacman -Syu --noconfirm cambonos-installer; then", script)
-        self.assertIn("if ! cambonos-installer; then", script)
+        self.assertIn("\ncambonos-installer\n", script)
         self.assertTrue((ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc").is_file())
         self.assertIn("nmtui || true", (ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc").read_text())
         self.assertNotIn("installer/dialog.sh", script)
         self.assertNotIn("/tmp/FIN_ERR", script)
         self.assertNotIn("git clone https://github.com/CambonOS/installer", script)
-
-    def test_builder_removes_conflicting_package_from_profile(self):
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            profile_directory = Path(temporary_directory)
-            package_list = profile_directory / "packages.x86_64"
-            package_list.write_text("base\ngrml-zsh-config\ncambonos-zsh\n")
-            subprocess.run(
-                [
-                    "bash",
-                    "-c",
-                    'source "$1"; PROFILE_DIR="$2"; remove_package grml-zsh-config',
-                    "test-builder",
-                    str(ROOT / "files" / "bin" / "cambonos-mkiso"),
-                    str(profile_directory),
-                ],
-                check=True,
-            )
-            self.assertEqual(package_list.read_text(), "base\ncambonos-zsh\n")
 
     def test_testing_option_writes_testing_repository_configuration(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

@@ -1,0 +1,15 @@
+base
+cambonos-base
+cambonos-grub
+cambonos-installer
+git
+iputils
+linux
+linux-firmware
+mkinitcpio
+mkinitcpio-archiso
+networkmanager
+shadow
+sudo
+syslinux
+wpa_supplicant

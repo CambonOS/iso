@@ -1,11 +1,11 @@
 pkgname=cambonos-mkiso
 pkgver=0.1.5
-pkgrel=8
+pkgrel=10
 pkgdesc="Build CambonOS installation images from the included ArchISO profile"
 arch=('any')
 url="https://github.com/CambonOS/cambonos-mkiso"
 license=('GPL-3.0-only')
-depends=('archiso' 'bash' 'cambonos-keyring' 'coreutils' 'git' 'pacman')
+depends=('archiso' 'bash' 'cambonos-keyring' 'coreutils' 'git' 'grub' 'pacman')
 
 package() {
   install -Dm644 "$startdir/LICENSE" \
