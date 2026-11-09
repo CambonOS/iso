@@ -108,6 +108,15 @@ fi
 if ! cambonos-installer; then
 	dialog --title 'CambonOS Installer' --msgbox 'La instalación devolvió un error. Consulte el registro mostrado por el instalador antes de reiniciar.' 8 76 || true
 fi
+clear
+cambonos-fastfetch
+echo ""
+echo "  To start the installation at any time, run:"
+echo "    cambonos-installer"
+echo ""
+echo "  To shut down the system, run:"
+echo "    poweroff"
+echo ""
 EOF
 	fi
 }
