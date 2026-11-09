@@ -24,6 +24,8 @@ else
 fi
 "
 
+cambonos-installer
+
 clear
 cambonos-fastfetch
 echo ""

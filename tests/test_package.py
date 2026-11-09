@@ -13,7 +13,7 @@ class MkisoPackageTests(unittest.TestCase):
         script = (ROOT / "files" / "bin" / "cambonos-mkiso").read_text()
         self.assertIn("pkgname=cambonos-mkiso", build)
         self.assertIn("pkgver=0.2.0", build)
-        self.assertIn("pkgrel=6", build)
+        self.assertIn("pkgrel=7", build)
         self.assertIn("'archiso'", build)
         self.assertIn("'grub'", build)
         self.assertIn("/usr/share/cambonos-mkiso/profile", build)
@@ -37,6 +37,8 @@ class MkisoPackageTests(unittest.TestCase):
         self.assertIn("title_color = (CYAN,BLACK,ON)", dialogrc)
         self.assertIn("item_selected_color = (BLACK,GREEN,ON)", dialogrc)
         self.assertIn("check_selected_color = (BLACK,GREEN,ON)", dialogrc)
+        self.assertIn("gauge_color = (BLACK,GREEN,ON)", dialogrc)
+        self.assertIn("border2_color = (CYAN,BLACK,ON)", dialogrc)
         self.assertTrue(dialogrc.endswith("\n"))
         for package in (
             "cambonos-base",
