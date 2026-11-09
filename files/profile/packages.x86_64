@@ -9,8 +9,10 @@ linux-firmware
 mkinitcpio
 mkinitcpio-archiso
 networkmanager
-pacman-mirrorlist
+reflector
 shadow
 sudo
 syslinux
 wpa_supplicant
+nano
+vim

@@ -13,7 +13,7 @@ class MkisoPackageTests(unittest.TestCase):
         script = (ROOT / "files" / "bin" / "cambonos-mkiso").read_text()
         self.assertIn("pkgname=cambonos-mkiso", build)
         self.assertIn("pkgver=0.2.0", build)
-        self.assertIn("pkgrel=4", build)
+        self.assertIn("pkgrel=5", build)
         self.assertIn("'archiso'", build)
         self.assertIn("'grub'", build)
         self.assertIn("/usr/share/cambonos-mkiso/profile", build)
@@ -36,15 +36,19 @@ class MkisoPackageTests(unittest.TestCase):
         self.assertIn("screen_color = (WHITE,BLACK,OFF)", dialogrc)
         self.assertIn("title_color = (CYAN,BLACK,ON)", dialogrc)
         self.assertIn("item_selected_color = (BLACK,GREEN,ON)", dialogrc)
+        self.assertIn("check_selected_color = (BLACK,GREEN,ON)", dialogrc)
+        self.assertTrue(dialogrc.endswith("\n"))
         for package in (
             "cambonos-base",
             "cambonos-grub",
             "cambonos-installer",
             "git",
             "mkinitcpio-archiso",
-            "pacman-mirrorlist",
+            "reflector",
             "shadow",
             "sudo",
+            "nano",
+            "vim",
             "syslinux",
         ):
             self.assertIn(package, packages)
@@ -68,12 +72,13 @@ class MkisoPackageTests(unittest.TestCase):
 
     def test_builder_runs_only_the_installed_installer(self):
         script = (ROOT / "files" / "bin" / "cambonos-mkiso").read_text()
-        self.assertIn("ping -c 1 mirror.cambonos.org", script)
         self.assertIn("nmtui || true", script)
-        self.assertIn("if ! ping -c 1 mirror.cambonos.org >/dev/null 2>&1; then", script)
         self.assertIn("if ! pacman -Syu --noconfirm cambonos-installer; then", script)
         self.assertTrue((ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc").is_file())
         zshrc = (ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc").read_text()
+        self.assertIn("if ! reflector -l 10 -f 5 --save /etc/pacman.d/mirrorlist; then", zshrc)
+        self.assertIn("reflector -l 10 -f 5 --save /etc/pacman.d/mirrorlist", script)
+        self.assertNotIn("ping -c 1 mirror.cambonos.org", zshrc)
         self.assertIn("systemctl start NetworkManager.service >/dev/null 2>&1 || true", zshrc)
         self.assertIn("dialog --title 'CambonOS Installer' --msgbox 'Network connection failed.", zshrc)
         self.assertIn("if ! pacman -Syu --noconfirm cambonos-installer >/dev/null 2>&1; then", zshrc)
@@ -130,6 +135,31 @@ class MkisoPackageTests(unittest.TestCase):
             )
             self.assertIn("[cambonos]\n", pacman_conf.read_text())
             self.assertIn("https://mirror.cambonos.org/stable/$arch", pacman_conf.read_text())
+
+    def test_live_pacman_configuration_enables_arch_and_selected_cambonos_repository(self):
+        for option, repository, channel in (
+            ("", "cambonos", "stable"),
+            ("--testing", "cambonos-testing", "testing"),
+        ):
+            with self.subTest(channel=channel), tempfile.TemporaryDirectory() as temporary_directory:
+                subprocess.run(
+                    [
+                        "bash",
+                        "-c",
+                        'source "$1"; PROFILE_DIR="$2"; select_repository "${3:-}"; write_live_repository_configuration',
+                        "test-builder",
+                        str(ROOT / "files" / "bin" / "cambonos-mkiso"),
+                        temporary_directory,
+                        option,
+                    ],
+                    check=True,
+                )
+                pacman_conf = Path(temporary_directory) / "airootfs" / "etc" / "pacman.conf"
+                configuration = pacman_conf.read_text()
+                self.assertIn("[core]\nInclude = /etc/pacman.d/mirrorlist", configuration)
+                self.assertIn("[extra]\nInclude = /etc/pacman.d/mirrorlist", configuration)
+                self.assertIn(f"[{repository}]\nSigLevel = Required TrustedOnly", configuration)
+                self.assertIn(f"https://mirror.cambonos.org/{channel}/$arch", configuration)
 
     def test_builder_rejects_removed_options_without_building(self):
         for option in ("-t", "-b"):

@@ -63,9 +63,24 @@ append_repository_configuration() {
 }
 
 write_live_repository_configuration() {
-	local config_dir="$PROFILE_DIR/airootfs/etc/pacman.d"
-	mkdir -p "$config_dir"
-	repository_configuration > "$config_dir/cambonos.conf"
+	local pacman_conf="$PROFILE_DIR/airootfs/etc/pacman.conf"
+	mkdir -p "$(dirname "$pacman_conf")"
+	cat > "$pacman_conf" <<'EOF'
+[options]
+Architecture = auto
+HoldPkg = pacman glibc
+ParallelDownloads = 5
+SigLevel = Required DatabaseOptional
+LocalFileSigLevel = Optional
+
+[core]
+Include = /etc/pacman.d/mirrorlist
+
+[extra]
+Include = /etc/pacman.d/mirrorlist
+
+EOF
+	repository_configuration >> "$pacman_conf"
 }
 
 stage_desktops() {
@@ -81,13 +96,12 @@ configure_live_startup() {
 	mkdir -p "$PROFILE_DIR/airootfs/root"
 	if [[ ! -f "$PROFILE_DIR/airootfs/root/.zshrc" ]]; then
 		cat > "$PROFILE_DIR/airootfs/root/.zshrc" <<'EOF'
-if ! ping -c 1 mirror.cambonos.org >/dev/null 2>&1; then
+if ! reflector -l 10 -f 5 --save /etc/pacman.d/mirrorlist; then
 	systemctl start NetworkManager.service || true
 	dialog --title 'CambonOS Installer' --msgbox 'Fallo en la conexion de red. Se lanzara nmtui para poder configurar la conexión.' 8 76 || true
 	nmtui || true
-	if ! ping -c 1 mirror.cambonos.org >/dev/null 2>&1; then
-		dialog --title 'CambonOS Installer' --msgbox 'La comprobación de red sigue fallando. Se lanzara nmtui de nuevo para poder configurar la conexión.' 8 76 || true
-		nmtui || true
+	if ! reflector -l 10 -f 5 --save /etc/pacman.d/mirrorlist; then
+		dialog --title 'CambonOS Installer' --msgbox 'No se pudieron obtener mirrors de Arch Linux. Comprueba la red e inténtalo de nuevo.' 8 76 || true
 	fi
 fi
 
