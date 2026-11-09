@@ -12,7 +12,7 @@ class MkisoPackageTests(unittest.TestCase):
         build = (ROOT / "PKGBUILD").read_text()
         script = (ROOT / "files" / "bin" / "cambonos-mkiso").read_text()
         self.assertIn("pkgname=cambonos-mkiso", build)
-        self.assertIn("pkgrel=10", build)
+        self.assertIn("pkgrel=11", build)
         self.assertIn("'archiso'", build)
         self.assertIn("'grub'", build)
         self.assertIn("/usr/share/cambonos-mkiso/profile", build)
@@ -43,6 +43,9 @@ class MkisoPackageTests(unittest.TestCase):
             self.assertIn(package, packages)
         self.assertTrue((profile / "grub" / "grub.cfg").is_file())
         self.assertTrue((profile / "syslinux" / "syslinux.cfg").is_file())
+        firstboot_mask = profile / "airootfs" / "etc" / "systemd" / "system" / "systemd-firstboot.service"
+        self.assertTrue(firstboot_mask.is_symlink())
+        self.assertEqual(str(firstboot_mask.readlink()), "/dev/null")
         archiso_hooks = profile / "airootfs" / "etc" / "mkinitcpio.conf.d" / "archiso.conf"
         self.assertEqual(
             archiso_hooks.read_text().strip(),
@@ -62,9 +65,43 @@ class MkisoPackageTests(unittest.TestCase):
         self.assertIn("nmtui || true", script)
         self.assertIn("if ! ping -c 1 mirror.cambonos.org >/dev/null 2>&1; then", script)
         self.assertIn("if ! pacman -Syu --noconfirm cambonos-installer; then", script)
-        self.assertIn("\ncambonos-installer\n", script)
         self.assertTrue((ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc").is_file())
-        self.assertIn("nmtui || true", (ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc").read_text())
+        zshrc = (ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc").read_text()
+        expected_zshrc = "\n".join((
+            "if ! ping -c 1 mirror.cambonos.org >/dev/null 2>&1; then",
+            "\tsystemctl start NetworkManager.service || true",
+            "\tdialog --title 'CambonOS Installer' --msgbox 'Fallo en la conexion de red. Se lanzara nmtui para poder configurar la conexión.' 8 76 || true",
+            "\tnmtui || true",
+            "\tif ! ping -c 1 mirror.cambonos.org >/dev/null 2>&1; then",
+            "\t\tdialog --title 'CambonOS Installer' --msgbox 'La comprobación de red sigue fallando. Se lanzara nmtui de nuevo para poder configurar la conexión.' 8 76 || true",
+            "\t\tnmtui || true",
+            "\tfi",
+            "fi",
+            "",
+            "if ! pacman -Syu --noconfirm cambonos-installer; then",
+            "\tprintf '%s\\n' 'No se pudo actualizar cambonos-installer desde el repositorio CambonOS.' >&2",
+            "fi",
+            "",
+            "cambonos-installer",
+            "",
+            "clear",
+            "cambonos-fastfetch",
+            'echo ""',
+            'echo "  To start the installation at any time, run:"',
+            'echo "    cambonos-installer"',
+            'echo ""',
+            'echo "  To shut down the system, run:"',
+            'echo "    poweroff"',
+            'echo ""',
+        )) + "\n"
+        self.assertEqual(zshrc, expected_zshrc)
+        self.assertIn("dialog --title 'CambonOS Installer' --msgbox 'Fallo en la conexion de red.", zshrc)
+        self.assertIn("dialog --title 'CambonOS Installer' --msgbox 'La comprobación de red sigue fallando.", zshrc)
+        self.assertIn("if ! pacman -Syu --noconfirm cambonos-installer; then", zshrc)
+        self.assertIn("\ncambonos-installer\n", zshrc)
+        self.assertIn("cambonos-fastfetch", zshrc)
+        self.assertIn('echo "  To shut down the system, run:"', zshrc)
+        self.assertNotIn("if ! cambonos-installer; then", zshrc)
         self.assertNotIn("installer/dialog.sh", script)
         self.assertNotIn("/tmp/FIN_ERR", script)
         self.assertNotIn("git clone https://github.com/CambonOS/installer", script)
