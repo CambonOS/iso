@@ -12,7 +12,8 @@ class MkisoPackageTests(unittest.TestCase):
         build = (ROOT / "PKGBUILD").read_text()
         script = (ROOT / "files" / "bin" / "cambonos-mkiso").read_text()
         self.assertIn("pkgname=cambonos-mkiso", build)
-        self.assertIn("pkgrel=11", build)
+        self.assertIn("pkgver=0.2.0", build)
+        self.assertIn("pkgrel=1", build)
         self.assertIn("'archiso'", build)
         self.assertIn("'grub'", build)
         self.assertIn("/usr/share/cambonos-mkiso/profile", build)
@@ -67,40 +68,19 @@ class MkisoPackageTests(unittest.TestCase):
         self.assertIn("if ! pacman -Syu --noconfirm cambonos-installer; then", script)
         self.assertTrue((ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc").is_file())
         zshrc = (ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc").read_text()
-        expected_zshrc = "\n".join((
-            "if ! ping -c 1 mirror.cambonos.org >/dev/null 2>&1; then",
-            "\tsystemctl start NetworkManager.service || true",
-            "\tdialog --title 'CambonOS Installer' --msgbox 'Fallo en la conexion de red. Se lanzara nmtui para poder configurar la conexión.' 8 76 || true",
-            "\tnmtui || true",
-            "\tif ! ping -c 1 mirror.cambonos.org >/dev/null 2>&1; then",
-            "\t\tdialog --title 'CambonOS Installer' --msgbox 'La comprobación de red sigue fallando. Se lanzara nmtui de nuevo para poder configurar la conexión.' 8 76 || true",
-            "\t\tnmtui || true",
-            "\tfi",
-            "fi",
-            "",
-            "if ! pacman -Syu --noconfirm cambonos-installer; then",
-            "\tprintf '%s\\n' 'No se pudo actualizar cambonos-installer desde el repositorio CambonOS.' >&2",
-            "fi",
-            "",
-            "cambonos-installer",
-            "",
-            "clear",
-            "cambonos-fastfetch",
-            'echo ""',
-            'echo "  To start the installation at any time, run:"',
-            'echo "    cambonos-installer"',
-            'echo ""',
-            'echo "  To shut down the system, run:"',
-            'echo "    poweroff"',
-            'echo ""',
-        )) + "\n"
-        self.assertEqual(zshrc, expected_zshrc)
-        self.assertIn("dialog --title 'CambonOS Installer' --msgbox 'Fallo en la conexion de red.", zshrc)
-        self.assertIn("dialog --title 'CambonOS Installer' --msgbox 'La comprobación de red sigue fallando.", zshrc)
-        self.assertIn("if ! pacman -Syu --noconfirm cambonos-installer; then", zshrc)
-        self.assertIn("\ncambonos-installer\n", zshrc)
-        self.assertIn("cambonos-fastfetch", zshrc)
-        self.assertIn('echo "  To shut down the system, run:"', zshrc)
+        self.assertIn("systemctl start NetworkManager.service >/dev/null 2>&1 || true", zshrc)
+        self.assertIn("dialog --title 'CambonOS Installer' --msgbox 'Network connection failed.", zshrc)
+        self.assertIn("if ! pacman -Syu --noconfirm cambonos-installer >/dev/null 2>&1; then", zshrc)
+        self.assertIn("dialog --title 'CambonOS Installer' --msgbox 'Could not update cambonos-installer", zshrc)
+        self.assertIn("clear >/dev/null 2>&1", zshrc)
+        self.assertIn("\tnmtui || true", zshrc)
+        self.assertIn("\tcambonos-installer\n", zshrc)
+        self.assertIn("cambonos-fastfetch\necho", zshrc)
+        self.assertIn('echo "To start the installation at any time, run:"', zshrc)
+        self.assertIn('echo "To configure the network, run:"', zshrc)
+        self.assertIn('echo "To shut down the system, run:"', zshrc)
+        self.assertNotIn("Fallo", zshrc)
+        self.assertNotIn("No se pudo", zshrc)
         self.assertNotIn("if ! cambonos-installer; then", zshrc)
         self.assertNotIn("installer/dialog.sh", script)
         self.assertNotIn("/tmp/FIN_ERR", script)

@@ -1,24 +1,24 @@
 if ! ping -c 1 mirror.cambonos.org >/dev/null 2>&1; then
-	systemctl start NetworkManager.service || true
-	dialog --title 'CambonOS Installer' --msgbox 'Fallo en la conexion de red. Se lanzara nmtui para poder configurar la conexión.' 8 76 || true
+	systemctl start NetworkManager.service >/dev/null 2>&1 || true
+	dialog --title 'CambonOS Installer' --msgbox 'Network connection failed. nmtui will be launched so you can configure the connection.' 8 76 || true
 	nmtui || true
 fi
 
-if ! pacman -Syu --noconfirm cambonos-installer; then
-	dialog --title 'Instalador de CambonOS' --msgbox 'No se pudo actualizar cambonos-installer desde el repositorio de CambonOS.' 8 76 || true
+if ! pacman -Syu --noconfirm cambonos-installer >/dev/null 2>&1; then
+	dialog --title 'CambonOS Installer' --msgbox 'Could not update cambonos-installer from the CambonOS repository.' 8 76 || true
 else
 	cambonos-installer
 fi
 
-clear
+clear >/dev/null 2>&1
 cambonos-fastfetch
 echo ""
-echo "Para iniciar la instalación en cualquier momento, ejecuta:"
+echo "To start the installation at any time, run:"
 echo "    cambonos-installer"
 echo ""
-echo "Para configurar la red, ejecuta:"
+echo "To configure the network, run:"
 echo "    nmtui"
 echo ""
-echo "Para apagar el equipo, ejecuta:"
+echo "To shut down the system, run:"
 echo "    poweroff"
 echo ""

@@ -1,6 +1,6 @@
 pkgname=cambonos-mkiso
-pkgver=0.1.5
-pkgrel=12
+pkgver=0.2.0
+pkgrel=1
 pkgdesc="Build CambonOS installation images from the included ArchISO profile"
 arch=('any')
 url="https://github.com/CambonOS/cambonos-mkiso"
