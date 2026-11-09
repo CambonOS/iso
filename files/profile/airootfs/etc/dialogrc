@@ -1,0 +1,25 @@
+use_colors = ON
+use_shadow = OFF
+
+screen_color = (WHITE,BLACK,OFF)
+dialog_color = (WHITE,BLACK,OFF)
+title_color = (CYAN,BLACK,ON)
+border_color = (CYAN,BLACK,ON)
+
+button_active_color = (BLACK,GREEN,ON)
+button_inactive_color = (WHITE,BLACK,OFF)
+button_key_active_color = (BLACK,GREEN,ON)
+button_key_inactive_color = (GREEN,BLACK,ON)
+button_label_active_color = (BLACK,GREEN,ON)
+button_label_inactive_color = (WHITE,BLACK,OFF)
+
+inputbox_color = (WHITE,BLACK,OFF)
+inputbox_border_color = (CYAN,BLACK,ON)
+menubox_color = (WHITE,BLACK,OFF)
+menubox_border_color = (CYAN,BLACK,ON)
+item_color = (WHITE,BLACK,OFF)
+item_selected_color = (BLACK,GREEN,ON)
+tag_color = (CYAN,BLACK,ON)
+tag_selected_color = (BLACK,GREEN,ON)
+check_color = (CYAN,BLACK,ON)
+check_selected_color = (BLACK,GREEN,ON)

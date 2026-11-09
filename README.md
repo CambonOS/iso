@@ -24,9 +24,10 @@ sudo cambonos-mkiso --testing
 ```
 
 Requiere root, `archiso`, `grub` y conexión a Internet para clonar las fuentes
-de escritorio y descargar los paquetes. Solicita el directorio de salida, usa un
-directorio temporal propio y no elimina otros datos ni desinstala paquetes del
-sistema anfitrión:
+de escritorio y descargar los paquetes. La imagen incluye `pacman-mirrorlist`
+para los repositorios de Arch y configura `dialog` con los colores ANSI de la
+paleta CambonOS. Solicita el directorio de salida, usa un directorio temporal
+propio y no elimina otros datos ni desinstala paquetes del sistema anfitrión:
 
 ```sh
 sudo cambonos-mkiso

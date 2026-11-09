@@ -13,7 +13,7 @@ class MkisoPackageTests(unittest.TestCase):
         script = (ROOT / "files" / "bin" / "cambonos-mkiso").read_text()
         self.assertIn("pkgname=cambonos-mkiso", build)
         self.assertIn("pkgver=0.2.0", build)
-        self.assertIn("pkgrel=1", build)
+        self.assertIn("pkgrel=4", build)
         self.assertIn("'archiso'", build)
         self.assertIn("'grub'", build)
         self.assertIn("/usr/share/cambonos-mkiso/profile", build)
@@ -24,6 +24,7 @@ class MkisoPackageTests(unittest.TestCase):
         profile = ROOT / "files" / "profile"
         package_manifest = (profile / "packages.x86_64").read_text()
         packages = package_manifest.splitlines()
+        dialogrc = (profile / "airootfs" / "etc" / "dialogrc").read_text()
         self.assertNotIn("*** Add File:", package_manifest)
         self.assertNotIn("xfce", packages)
         self.assertNotIn("qtile", packages)
@@ -31,12 +32,17 @@ class MkisoPackageTests(unittest.TestCase):
         self.assertTrue((profile / "profiledef.sh").is_file())
         self.assertIn("'uefi.grub'", (profile / "profiledef.sh").read_text())
         self.assertIn("'bios.syslinux'", (profile / "profiledef.sh").read_text())
+        self.assertIn("use_colors = ON", dialogrc)
+        self.assertIn("screen_color = (WHITE,BLACK,OFF)", dialogrc)
+        self.assertIn("title_color = (CYAN,BLACK,ON)", dialogrc)
+        self.assertIn("item_selected_color = (BLACK,GREEN,ON)", dialogrc)
         for package in (
             "cambonos-base",
             "cambonos-grub",
             "cambonos-installer",
             "git",
             "mkinitcpio-archiso",
+            "pacman-mirrorlist",
             "shadow",
             "sudo",
             "syslinux",
@@ -72,9 +78,9 @@ class MkisoPackageTests(unittest.TestCase):
         self.assertIn("dialog --title 'CambonOS Installer' --msgbox 'Network connection failed.", zshrc)
         self.assertIn("if ! pacman -Syu --noconfirm cambonos-installer >/dev/null 2>&1; then", zshrc)
         self.assertIn("dialog --title 'CambonOS Installer' --msgbox 'Could not update cambonos-installer", zshrc)
-        self.assertIn("clear >/dev/null 2>&1", zshrc)
+        self.assertIn("clear\ncambonos-fastfetch", zshrc)
         self.assertIn("\tnmtui || true", zshrc)
-        self.assertIn("\tcambonos-installer\n", zshrc)
+        self.assertIn('alias cambonos-installer="', zshrc)
         self.assertIn("cambonos-fastfetch\necho", zshrc)
         self.assertIn('echo "To start the installation at any time, run:"', zshrc)
         self.assertIn('echo "To configure the network, run:"', zshrc)
