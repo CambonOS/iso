@@ -10,7 +10,7 @@ else
 	cambonos-installer
 fi
 
-clear >/dev/null 2>&1
+clear
 cambonos-fastfetch
 echo ""
 echo "To start the installation at any time, run:"
