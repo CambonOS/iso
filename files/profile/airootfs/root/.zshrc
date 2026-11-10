@@ -1,4 +1,4 @@
-dialog --title 'CambonOS Installer' --msgbox 'Welcome to the CambonOS installer. This is a live environment and any changes made here will not persist after reboot. Please ensure you have a stable internet connection before proceeding with the installation.' 8 76 || true
+dialog --title ' CambonOS Installer ' --msgbox '\nWelcome to the CambonOS installer. This is a live environment and any changes made here will not persist after reboot.' 8 76 || true
 
 systemctl start NetworkManager.service >/dev/null 2>&1 || true
 failed_network_checks=0
