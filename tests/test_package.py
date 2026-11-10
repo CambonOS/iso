@@ -13,7 +13,7 @@ class MkisoPackageTests(unittest.TestCase):
         script = (ROOT / "files" / "bin" / "cambonos-mkiso").read_text()
         self.assertIn("pkgname=cambonos-mkiso", build)
         self.assertIn("pkgver=0.2.1", build)
-        self.assertIn("pkgrel=1", build)
+        self.assertIn("pkgrel=2", build)
         self.assertIn("'archiso'", build)
         self.assertIn("'grub'", build)
         self.assertIn("/usr/share/cambonos-mkiso/profile", build)
