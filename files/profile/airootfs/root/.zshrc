@@ -3,14 +3,14 @@ dialog --title 'CambonOS Installer' --msgbox 'Welcome to the CambonOS installer.
 systemctl start NetworkManager.service >/dev/null 2>&1 || true
 failed_network_checks=0
 while true; do
-	dialog --title 'CambonOS Network' --sleep 1 --infobox 'Checking network connection...' 5 64 || true
+	dialog --title ' CambonOS Network ' --sleep 1 --infobox '\nChecking network connection...' 5 64 || true
 	if reflector -l 10 -f 5 --save /etc/pacman.d/mirrorlist; then
 		break
 	fi
 
 	((failed_network_checks += 1))
 	if ((failed_network_checks >= 5)); then
-		dialog --title 'CambonOS Network' --msgbox 'Network is still unavailable. Configure it with nmtui.' 8 76 || true
+		dialog --title ' CambonOS Network ' --msgbox '\nNetwork is still unavailable. Configure it with nmtui.' 8 76 || true
 		nmtui || true
 		failed_network_checks=0
 	fi
@@ -18,7 +18,7 @@ done
 
 alias cambonos-installer="
 if ! pacman -Syu --noconfirm cambonos-installer >/dev/null 2>&1; then
-	dialog --title 'CambonOS Installer' --msgbox 'Could not update cambonos-installer from the CambonOS repository.' 8 76 || true
+	dialog --title ' CambonOS Installer ' --msgbox '\nCould not update cambonos-installer from the CambonOS repository.' 8 76 || true
 else
 	/usr/bin/cambonos-installer
 fi
