@@ -13,7 +13,7 @@ class MkisoPackageTests(unittest.TestCase):
         script = (ROOT / "files" / "bin" / "cambonos-mkiso").read_text()
         self.assertIn("pkgname=cambonos-mkiso", build)
         self.assertIn("pkgver=0.2.1", build)
-        self.assertIn("pkgrel=2", build)
+        self.assertIn("pkgrel=3", build)
         self.assertIn("'archiso'", build)
         self.assertIn("'grub'", build)
         self.assertIn("/usr/share/cambonos-mkiso/profile", build)
@@ -37,7 +37,6 @@ class MkisoPackageTests(unittest.TestCase):
             "cambonos-installer",
             "git",
             "mkinitcpio-archiso",
-            "reflector",
             "shadow",
             "sudo",
             "nano",
@@ -69,18 +68,17 @@ class MkisoPackageTests(unittest.TestCase):
         self.assertNotIn("cat > \"$PROFILE_DIR/airootfs/root/.zshrc\"", script)
         self.assertTrue((ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc").is_file())
         zshrc = (ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc").read_text()
-        self.assertIn("dialog --title ' CambonOS Network ' --sleep 1 --infobox '\nChecking network connection...' 5 64", zshrc)
+        self.assertIn(r"dialog --title ' CambonOS Installer ' --sleep 1 --infobox '\nChecking network connection...' 5 64", zshrc)
         self.assertIn("failed_network_checks=0", zshrc)
         self.assertIn("if ((failed_network_checks >= 5)); then", zshrc)
-        self.assertIn("reflector -l 10 -f 5 --save /etc/pacman.d/mirrorlist", zshrc)
+        self.assertNotIn("reflector", zshrc)
         self.assertNotIn("ping -c 1 mirror.cambonos.org", zshrc)
         self.assertIn("systemctl start NetworkManager.service >/dev/null 2>&1 || true", zshrc)
         self.assertIn("nmtui || true", zshrc)
-        self.assertLess(zshrc.index("--infobox 'Checking network connection..."), zshrc.index("reflector -l 10"))
         self.assertLess(zshrc.index("if ((failed_network_checks >= 5)); then"), zshrc.index("nmtui || true"))
         self.assertLess(zshrc.index("nmtui || true"), zshrc.rindex("failed_network_checks=0"))
-        self.assertIn("if ! pacman -Syu --noconfirm cambonos-installer >/dev/null 2>&1; then", zshrc)
-        self.assertIn("dialog --title ' CambonOS Installer ' --msgbox '\nCould not update cambonos-installer", zshrc)
+        self.assertIn("/usr/bin/cambonos-installer", zshrc)
+        self.assertIn("pacman -Syu", zshrc)
         self.assertIn("clear\ncambonos-fastfetch", zshrc)
         self.assertIn("\tnmtui || true", zshrc)
         self.assertIn('alias cambonos-installer="', zshrc)
@@ -101,7 +99,7 @@ class MkisoPackageTests(unittest.TestCase):
                 "-c",
                 'network_checks=0; nmtui_calls=0; '
                 'dialog() { :; }; systemctl() { :; }; '
-                'reflector() { network_checks=$((network_checks + 1)); ((network_checks > 5)); }; '
+                'ping() { network_checks=$((network_checks + 1)); ((network_checks > 5)); }; '
                 'nmtui() { nmtui_calls=$((nmtui_calls + 1)); }; '
                 'clear() { :; }; cambonos-fastfetch() { :; }; '
                 'source "$1" >/dev/null; '
@@ -153,7 +151,7 @@ class MkisoPackageTests(unittest.TestCase):
             self.assertIn("[cambonos]\n", pacman_conf.read_text())
             self.assertIn("https://mirror.cambonos.org/stable/$arch", pacman_conf.read_text())
 
-    def test_live_pacman_configuration_enables_arch_and_selected_cambonos_repository(self):
+    def test_live_pacman_configuration_uses_arch_mirror_without_cambonos_repository(self):
         for option, repository, channel in (
             ("", "cambonos", "stable"),
             ("--testing", "cambonos-testing", "testing"),
@@ -173,10 +171,13 @@ class MkisoPackageTests(unittest.TestCase):
                 )
                 pacman_conf = Path(temporary_directory) / "airootfs" / "etc" / "pacman.conf"
                 configuration = pacman_conf.read_text()
-                self.assertIn("[core]\nInclude = /etc/pacman.d/mirrorlist", configuration)
-                self.assertIn("[extra]\nInclude = /etc/pacman.d/mirrorlist", configuration)
-                self.assertIn(f"[{repository}]\nSigLevel = Required TrustedOnly", configuration)
-                self.assertIn(f"https://mirror.cambonos.org/{channel}/$arch", configuration)
+                mirror = "Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch"
+                self.assertIn(f"[core]\n{mirror}", configuration)
+                self.assertIn(f"[extra]\n{mirror}", configuration)
+                self.assertNotIn("mirrorlist", configuration)
+                self.assertNotIn("[cambonos]", configuration)
+                self.assertNotIn("[cambonos-testing]", configuration)
+                self.assertNotIn(f"https://mirror.cambonos.org/{channel}/$arch", configuration)
 
     def test_builder_rejects_removed_options_without_building(self):
         for option in ("-t", "-b"):

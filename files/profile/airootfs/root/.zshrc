@@ -3,14 +3,14 @@ dialog --title ' CambonOS Installer ' --msgbox '\nWelcome to the CambonOS instal
 systemctl start NetworkManager.service >/dev/null 2>&1 || true
 failed_network_checks=0
 while true; do
-	dialog --title ' CambonOS Network ' --sleep 1 --infobox '\nChecking network connection...' 5 64 || true
-	if reflector -l 10 -f 5 --save /etc/pacman.d/mirrorlist; then
+	dialog --title ' CambonOS Installer ' --sleep 1 --infobox '\nChecking network connection...' 5 64 || true
+	if ping -c 1 google.com >/dev/null 2>&1; then
 		break
 	fi
 
 	((failed_network_checks += 1))
 	if ((failed_network_checks >= 5)); then
-		dialog --title ' CambonOS Network ' --msgbox '\nNetwork is still unavailable. Configure it with nmtui.' 8 76 || true
+		dialog --title ' CambonOS Installer ' --msgbox '\nNetwork is still unavailable. Configure it with nmtui.' 8 76 || true
 		nmtui || true
 		failed_network_checks=0
 	fi
@@ -23,8 +23,6 @@ else
 	/usr/bin/cambonos-installer
 fi
 "
-
-cambonos-installer
 
 clear
 cambonos-fastfetch

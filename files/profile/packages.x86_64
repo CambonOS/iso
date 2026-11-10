@@ -9,7 +9,6 @@ linux-firmware
 mkinitcpio
 mkinitcpio-archiso
 networkmanager
-reflector
 shadow
 sudo
 syslinux

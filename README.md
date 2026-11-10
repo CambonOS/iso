@@ -11,12 +11,15 @@ El perfil incluido es completo y se gestiona desde este repositorio; no depende
 de copiar el perfil `releng` del host. Mantiene Syslinux para BIOS y usa GRUB
 con el tema CambonOS para UEFI. El live contiene `cambonos-base`,
 `cambonos-grub` y `cambonos-installer`, además del conjunto mínimo de arranque,
-red y servicios de pacman. Al arrancar, `reflector` actualiza la mirrorlist de
-Arch y valida la conectividad tras una pausa de un segundo; tras cinco fallos se
-vuelve a abrir `nmtui` y se reintenta hasta validar la conexión. La configuración live activa
-los repositorios de Arch y el canal CambonOS elegido. El perfil define los hooks `mkinitcpio-archiso`
-necesarios para montar y arrancar el sistema live. El builder añade el repositorio CambonOS con
-`Required TrustedOnly` y actualiza `cambonos-installer` antes de ejecutarlo.
+red y servicios de pacman. La live usa el mirror global de Arch
+`https://geo.mirror.pkgbuild.com/$repo/os/$arch` para `[core]` y `[extra]`, sin
+generar una mirrorlist al arrancar. Valida la conectividad tras una pausa de un
+segundo; tras cinco fallos vuelve a abrir `nmtui` y reintenta hasta validar la
+conexión. La configuración live no añade repositorios CambonOS; el builder sí
+configura el canal CambonOS elegido en el perfil de construcción para resolver
+los paquetes incluidos en la ISO. El perfil define los hooks `mkinitcpio-archiso`
+necesarios para montar y arrancar el sistema live. El instalador incluido se
+ejecuta directamente desde la imagen.
 XFCE y Qtile se siguen clonando en `/root` para que el instalador pueda
 configurarlos; no se instalan como escritorios del entorno live.
 
@@ -27,8 +30,8 @@ sudo cambonos-mkiso --testing
 ```
 
 Requiere root, `archiso`, `grub` y conexión a Internet para clonar las fuentes
-de escritorio y descargar los paquetes. La imagen incluye `pacman-mirrorlist`
-para los repositorios de Arch y configura `dialog` con los colores ANSI de la
+de escritorio y descargar los paquetes. La configuración de Arch live no depende
+de `pacman-mirrorlist` y configura `dialog` con los colores ANSI de la
 paleta CambonOS. Solicita el directorio de salida, usa un directorio temporal
 propio y no elimina otros datos ni desinstala paquetes del sistema anfitrión:
 
