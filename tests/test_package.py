@@ -14,7 +14,7 @@ class MkisoPackageTests(unittest.TestCase):
         script = (ROOT / "files" / "bin" / "cambonos-mkiso").read_text()
         self.assertIn("pkgname=cambonos-mkiso", build)
         self.assertIn("pkgver=0.2.1", build)
-        self.assertIn("pkgrel=5", build)
+        self.assertIn("pkgrel=6", build)
         self.assertIn("'archiso'", build)
         self.assertIn("'grub'", build)
         self.assertIn("/usr/share/cambonos-mkiso/profile", build)
@@ -28,6 +28,7 @@ class MkisoPackageTests(unittest.TestCase):
         self.assertNotIn("*** Add File:", package_manifest)
         self.assertNotIn("xfce", packages)
         self.assertNotIn("qtile", packages)
+        self.assertNotIn("dialog", packages)
         self.assertNotIn("*** Add File:", (profile / "pacman.conf").read_text())
         self.assertTrue((profile / "profiledef.sh").is_file())
         self.assertIn("'uefi.grub'", (profile / "profiledef.sh").read_text())
@@ -87,8 +88,7 @@ class MkisoPackageTests(unittest.TestCase):
         self.assertNotIn("ping -c 1 google.com", zshrc)
         self.assertNotIn("systemctl start NetworkManager.service", zshrc)
         self.assertNotIn("pacman -Syu", zshrc)
-        self.assertIn("clear\ncambonos-fastfetch", zshrc)
-        self.assertIn("cambonos-fastfetch\necho", zshrc)
+        self.assertTrue(all(line.startswith("echo ") for line in zshrc.splitlines()))
         self.assertIn('echo "To start the installation at any time, run:"', zshrc)
         self.assertIn('echo "To configure the network, run:"', zshrc)
         self.assertIn('echo "To shut down the system, run:"', zshrc)
@@ -96,6 +96,22 @@ class MkisoPackageTests(unittest.TestCase):
         self.assertNotIn("installer/dialog.sh", script)
         self.assertNotIn("/tmp/FIN_ERR", script)
         self.assertNotIn("git clone https://github.com/CambonOS/installer", script)
+
+    def test_live_startup_messages(self):
+        zshrc = ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc"
+        result = subprocess.run(["zsh", "-f", str(zshrc)], capture_output=True, text=True, check=True)
+        self.assertEqual(result.stderr, "")
+        self.assertEqual(
+            result.stdout,
+            "\x1b[1;36mWelcome to CambonOS. This is a live system.\x1b[0m\n"
+            "\x1b[33mChanges made here will not persist after reboot.\x1b[0m\n"
+            "\nTo start the installation at any time, run:\n"
+            "    \x1b[1;32mcambonos-installer\x1b[0m\n"
+            "\nTo configure the network, run:\n"
+            "    \x1b[1;32mnmtui\x1b[0m\n"
+            "\nTo shut down the system, run:\n"
+            "    \x1b[1;32mpoweroff\x1b[0m\n\n",
+        )
 
     def test_testing_option_writes_testing_repository_configuration(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

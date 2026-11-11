@@ -28,6 +28,10 @@ que incluye la preparación de red y la actualización. Publique primero esa
 versión del instalador en el mismo canal.
 XFCE y Qtile se siguen clonando en `/root` para que el instalador pueda
 configurarlos; no se instalan como escritorios del entorno live.
+Al iniciar la sesión live se muestra una advertencia de que los cambios no
+persisten tras reiniciar, junto con los comandos para instalar, configurar la
+red y apagar el sistema. `dialog` es una dependencia del instalador, no una
+dependencia directa del perfil live.
 
 Por defecto usa el repositorio stable. Se puede seleccionar testing con:
 
