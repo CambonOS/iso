@@ -50,3 +50,16 @@ sudo cambonos-mkiso
 ```
 
 Las antiguas opciones `-t` y `-b` no se admiten.
+
+## CI entre repositorios
+
+Los pushes a `dev` y `main` ejecutan los tests de este repositorio. Si pasan,
+GitHub Actions envía a `cambonos-packages` el evento `external-package-updated`
+con el repositorio, la rama y el commit como metadatos. El workflow receptor de
+`cambonos-packages` debe aceptar ese evento para iniciar la reconstrucción.
+
+Configura en este repositorio el secreto `CAMBONOS_PACKAGES_DISPATCH_TOKEN` con
+un fine-grained personal access token limitado al repositorio
+`CambonOS/cambonos-packages` y permiso `Contents: write`. Protege las ramas
+`dev` y `main`; el token solo se utiliza en el paso de notificación, después de
+que terminen los tests.

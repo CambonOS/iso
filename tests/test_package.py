@@ -240,6 +240,19 @@ class MkisoPackageTests(unittest.TestCase):
             with self.subTest(path=path.name):
                 subprocess.run(["bash", "-n", str(path)], check=True)
 
+    def test_ci_notifies_packages_only_after_tests_pass(self):
+        workflow = (ROOT / ".github" / "workflows" / "notify-packages.yml").read_text()
+        self.assertIn("branches:\n      - dev\n      - main", workflow)
+        test_step = workflow.index("python -m unittest discover -s tests -v")
+        notify_step = workflow.index("Notify cambonos-packages")
+        self.assertLess(test_step, notify_step)
+        self.assertIn("secrets.CAMBONOS_PACKAGES_DISPATCH_TOKEN", workflow)
+        self.assertIn("repos/CambonOS/cambonos-packages/dispatches", workflow)
+        self.assertIn('event_type: "external-package-updated"', workflow)
+        for field in ("repository", "branch", "commit"):
+            with self.subTest(field=field):
+                self.assertIn(f"{field}: ${field}", workflow)
+
 
 if __name__ == "__main__":
     unittest.main()
