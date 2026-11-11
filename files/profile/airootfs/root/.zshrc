@@ -1,3 +1,5 @@
+alias cambonos-installer='/usr/bin/cambonos-installer; clear; source ~/.zshrc'
+
 echo $'\033[1;36mWelcome to CambonOS. This is a live system.\033[0m'
 echo $'\033[33mChanges made here will not persist after reboot.\033[0m'
 echo ""
