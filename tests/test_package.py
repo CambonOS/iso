@@ -14,7 +14,7 @@ class MkisoPackageTests(unittest.TestCase):
         script = (ROOT / "files" / "bin" / "cambonos-mkiso").read_text()
         self.assertIn("pkgname=cambonos-mkiso", build)
         self.assertIn("pkgver=0.2.1", build)
-        self.assertIn("pkgrel=4", build)
+        self.assertIn("pkgrel=5", build)
         self.assertIn("'archiso'", build)
         self.assertIn("'grub'", build)
         self.assertIn("/usr/share/cambonos-mkiso/profile", build)
@@ -79,23 +79,15 @@ class MkisoPackageTests(unittest.TestCase):
         self.assertNotIn("cat > \"$PROFILE_DIR/airootfs/root/.zshrc\"", script)
         self.assertTrue((ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc").is_file())
         zshrc = (ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc").read_text()
-        self.assertIn("sleep 2", zshrc)
-        self.assertIn("https://geo.mirror.pkgbuild.com/core/os/x86_64/core.db", zshrc)
-        self.assertIn("--programbox", zshrc)
-        self.assertIn("alias cambonos-installer='update_cambonos_installer'", zshrc)
-        self.assertIn("failed_network_checks=0", zshrc)
-        self.assertIn("if ((failed_network_checks >= 5)); then", zshrc)
+        self.assertNotIn("https://geo.mirror.pkgbuild.com/core/os/x86_64/core.db", zshrc)
+        self.assertNotIn("--programbox", zshrc)
+        self.assertNotIn("alias cambonos-installer=", zshrc)
+        self.assertNotIn("update_cambonos_installer", zshrc)
         self.assertNotIn("reflector", zshrc)
         self.assertNotIn("ping -c 1 google.com", zshrc)
-        self.assertIn("systemctl start NetworkManager.service >/dev/null 2>&1 || true", zshrc)
-        self.assertIn("nmtui || true", zshrc)
-        self.assertLess(zshrc.index("if ((failed_network_checks >= 5)); then"), zshrc.index("nmtui || true"))
-        self.assertLess(zshrc.index("nmtui || true"), zshrc.rindex("failed_network_checks=0"))
-        self.assertIn("/usr/bin/cambonos-installer", zshrc)
-        self.assertIn("pacman -Syu", zshrc)
+        self.assertNotIn("systemctl start NetworkManager.service", zshrc)
+        self.assertNotIn("pacman -Syu", zshrc)
         self.assertIn("clear\ncambonos-fastfetch", zshrc)
-        self.assertIn("\tnmtui || true", zshrc)
-        self.assertIn("alias cambonos-installer='update_cambonos_installer'", zshrc)
         self.assertIn("cambonos-fastfetch\necho", zshrc)
         self.assertIn('echo "To start the installation at any time, run:"', zshrc)
         self.assertIn('echo "To configure the network, run:"', zshrc)
@@ -104,50 +96,6 @@ class MkisoPackageTests(unittest.TestCase):
         self.assertNotIn("installer/dialog.sh", script)
         self.assertNotIn("/tmp/FIN_ERR", script)
         self.assertNotIn("git clone https://github.com/CambonOS/installer", script)
-
-    def test_live_network_retries_nmtui_after_five_failures(self):
-        zshrc = ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc"
-        subprocess.run(
-            [
-                "bash",
-                "-c",
-                'network_checks=0; nmtui_calls=0; sleep_calls=0; networkmanager_started=0; '
-                'dialog() { :; }; systemctl() { networkmanager_started=1; }; '
-                'sleep() { test "$1" -eq 2 && sleep_calls=$((sleep_calls + 1)); }; '
-                'curl() { network_checks=$((network_checks + 1)); [[ "$*" == *https://geo.mirror.pkgbuild.com/core/os/x86_64/core.db* ]] && ((network_checks > 5)); }; '
-                'nmtui() { nmtui_calls=$((nmtui_calls + 1)); }; '
-                'clear() { :; }; cambonos-fastfetch() { :; }; '
-                'source "$1" >/dev/null; '
-                'test "$network_checks" -eq 6 && test "$nmtui_calls" -eq 1 && '
-                'test "$sleep_calls" -eq 1 && test "$networkmanager_started" -eq 1',
-                "test-live-network",
-                str(zshrc),
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-
-    def test_installer_update_shows_pacman_output_and_preserves_failure(self):
-        zshrc = ROOT / "files" / "profile" / "airootfs" / "root" / ".zshrc"
-        result = subprocess.run(
-            [
-                "bash",
-                "-c",
-                'dialog() { if [[ "$*" == *--programbox* ]]; then cat; fi; }; '
-                'systemctl() { :; }; sleep() { :; }; curl() { return 0; }; '
-                'nmtui() { :; }; clear() { :; }; cambonos-fastfetch() { :; }; '
-                'pacman() { printf "download progress\\n"; return 42; }; '
-                'source "$1" >/dev/null; update_cambonos_installer; result=$?; '
-                'test "$result" -eq 42',
-                "test-update-progress",
-                str(zshrc),
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        self.assertIn("download progress", result.stdout)
 
     def test_testing_option_writes_testing_repository_configuration(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
