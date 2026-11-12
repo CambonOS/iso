@@ -64,7 +64,7 @@ class MkisoPackageTests(unittest.TestCase):
         archiso_hooks = profile / "airootfs" / "etc" / "mkinitcpio.conf.d" / "archiso.conf"
         self.assertEqual(
             archiso_hooks.read_text().strip(),
-            "HOOKS=(base udev modconf archiso block filesystems)",
+            "HOOKS=(base udev modconf archiso archiso_loop_mnt block filesystems)",
         )
         self.assertTrue((profile / "airootfs" / "etc" / "systemd" / "system" / "pacman-init.service").is_file())
         self.assertTrue((profile / "airootfs" / "etc" / "systemd" / "system" / "multi-user.target.wants" / "pacman-init.service").is_symlink())
