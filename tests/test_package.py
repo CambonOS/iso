@@ -14,7 +14,7 @@ class MkisoPackageTests(unittest.TestCase):
         script = (ROOT / "files" / "bin" / "cambonos-mkiso").read_text()
         self.assertIn("pkgname=cambonos-mkiso", build)
         self.assertIn("pkgver=0.2.1", build)
-        self.assertIn("pkgrel=7", build)
+        self.assertIn("pkgrel=8", build)
         self.assertIn("'archiso'", build)
         self.assertIn("'grub'", build)
         self.assertIn("/usr/share/cambonos-mkiso/profile", build)
@@ -106,7 +106,7 @@ class MkisoPackageTests(unittest.TestCase):
         self.assertEqual(result.stderr, "")
         self.assertEqual(
             result.stdout,
-            "\x1b[1;36mWelcome to CambonOS. This is a live system.\x1b[0m\n"
+            "\n\x1b[1;36mWelcome to CambonOS. This is a live system.\x1b[0m\n"
             "\x1b[33mChanges made here will not persist after reboot.\x1b[0m\n"
             "\nTo start the installation at any time, run:\n"
             "    \x1b[1;32mcambonos-installer\x1b[0m\n"
