@@ -1,0 +1,16 @@
+This CambonOS GRUB theme is derived from Vimix by Vinceliuice, from the
+grub2-themes project:
+https://github.com/vinceliuice/grub2-themes
+
+Vimix and these derived theme assets are distributed under the GNU General
+Public License, version 3 (GPL-3.0). The accompanying LICENSE file contains
+its text.
+
+The bundled Unifont PF2 font is dual-licensed upstream. This package selects
+GPL-2.0-or-later with the GNU font embedding exception; see LICENSE-UNIFONT and
+UNIFONT-FONT-EXCEPTION. Upstream license information:
+https://unifoundry.com/unifont/index.html
+
+CambonOS adaptations include the theme path, menu colors, package integration,
+and distribution icon. The remaining Vimix artwork and theme assets retain
+their upstream attribution and license.

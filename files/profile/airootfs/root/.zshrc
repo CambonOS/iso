@@ -1,15 +1,15 @@
-if ! ping -c 1 mirror.cambonos.org >/dev/null 2>&1; then
-	systemctl start NetworkManager.service || true
-	nmtui || true
-	if ! ping -c 1 mirror.cambonos.org >/dev/null 2>&1; then
-		nmtui || true
-	fi
-fi
+alias cambonos-installer='/usr/bin/cambonos-installer; clear; source ~/.zshrc'
 
-if ! pacman -Syu --noconfirm cambonos-installer; then
-	printf '%s\n' 'No se pudo actualizar cambonos-installer desde el repositorio CambonOS.' >&2
-fi
-
-if ! cambonos-installer; then
-	dialog --title 'CambonOS Installer' --msgbox 'La instalación devolvió un error. Consulte el registro mostrado por el instalador antes de reiniciar.' 8 76 || true
-fi
+echo ""
+echo $'\033[1;36mWelcome to CambonOS. This is a live system.\033[0m'
+echo $'\033[33mChanges made here will not persist after reboot.\033[0m'
+echo ""
+echo "To start the installation at any time, run:"
+echo $'    \033[1;32mcambonos-installer\033[0m'
+echo ""
+echo "To configure the network, run:"
+echo $'    \033[1;32mnmtui\033[0m'
+echo ""
+echo "To shut down the system, run:"
+echo $'    \033[1;32mpoweroff\033[0m'
+echo ""

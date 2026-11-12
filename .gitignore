@@ -7,5 +7,7 @@ venv/
 env/
 ENV/
 
-# local source tree
+# makepkg
 src/
+/pkg/
+*.pkg.tar.*
